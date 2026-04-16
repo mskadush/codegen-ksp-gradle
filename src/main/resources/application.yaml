@@ -1,0 +1,6 @@
+ktor:
+  application:
+    modules:
+      - za.co.skadush.codegen.ksp.ApplicationKt.module
+  deployment:
+    port: 8080
