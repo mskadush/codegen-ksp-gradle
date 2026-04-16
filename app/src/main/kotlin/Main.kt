@@ -22,7 +22,16 @@ import com.example.annotations.HelloWorld
  *
  * Annotated with `HelloWorld` to trigger the processor which generates `helloWorld`.
  */
-@HelloWorld
+@HelloWorld(target = UnseenClass::class)
 fun main() {
     helloWorld()
+}
+
+data class UnseenClass(
+  val name: String,
+  val location: Place,
+) {
+    data class Place(
+      val address: String,
+    )
 }

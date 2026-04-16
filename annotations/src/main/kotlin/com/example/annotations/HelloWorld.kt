@@ -17,9 +17,11 @@
 
 package com.example.annotations
 
+import kotlin.reflect.KClass
+
 /**
  * The HelloWorld annotation.
  *
  * Annotating a function with this will trigger the processor, thus generating a `helloWorld` function.
  */
-annotation class HelloWorld
+annotation class HelloWorld(val target: KClass<*>)
