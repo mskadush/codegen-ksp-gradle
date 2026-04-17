@@ -19,4 +19,9 @@
  * The main entrypoint.
  */
 fun main() {
+    val user = User(id = 1L, name = "Alice", email = "alice@example.com")
+    val entity = user.toEntity()
+    println(entity)
+    val domainBack = entity.toDomain()
+    println(domainBack)
 }

@@ -29,19 +29,23 @@ class DomainMappingProcessorProvider : SymbolProcessorProvider {
 
         private val classResolver = ClassResolver(environment.logger)
         private val entityGenerator = EntityGenerator(environment.codeGenerator, environment.logger, classResolver)
+        private val mapperGenerator = MapperGenerator(environment.codeGenerator, environment.logger, classResolver)
 
         /**
          * Processes one compilation round.
          *
          * Finds all `@EntitySpec`-annotated [KSClassDeclaration]s and asks [EntityGenerator]
-         * to generate the corresponding entity class for each one.
+         * and [MapperGenerator] to generate the entity class and mapper functions for each one.
          *
          * @return An empty list — all symbols are handled in the current round with no deferral.
          */
         override fun process(resolver: Resolver): List<KSAnnotated> {
             resolver.getSymbolsWithAnnotation("com.example.annotations.EntitySpec")
               .filterIsInstance<KSClassDeclaration>()
-              .forEach { entityGenerator.generate(it) }
+              .forEach { spec ->
+                  entityGenerator.generate(spec)
+                  mapperGenerator.generate(spec)
+              }
             return emptyList()
         }
     }

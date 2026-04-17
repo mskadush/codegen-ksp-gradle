@@ -106,10 +106,10 @@ First KotlinPoet output. `EntityGenerator` emits a bare `data class UserEntity()
 
 ### Step 5 — `MapperGenerator`: `User.toEntity()` + `UserEntity.toDomain()` (primitives)
 
-- [ ] Implement `MapperGenerator` using KotlinPoet `FunSpec.builder` as extension functions
-- [ ] Emit `fun User.toEntity(): UserEntity = UserEntity(field = this.field, ...)`
-- [ ] Emit `fun UserEntity.toDomain(): User = User(field = this.field, ...)`
-- [ ] Primitive/excluded fields handled; excluded fields use default or null
+- [x] Implement `MapperGenerator` using KotlinPoet `FunSpec.builder` as extension functions
+- [x] Emit `fun User.toEntity(): UserEntity = UserEntity(field = this.field, ...)`
+- [x] Emit `fun UserEntity.toDomain(): User = User(field = this.field, ...)`
+- [x] Primitive/excluded fields handled; excluded fields use default or null
 
 **Verify:**
 ```bash
