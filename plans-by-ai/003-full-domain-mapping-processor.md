@@ -74,9 +74,9 @@ First KotlinPoet output. `EntityGenerator` emits a bare `data class UserEntity()
 
 `ClassResolver.resolve(ksCls)` reads primary constructor parameters and returns a `List<FieldModel>`. `EntityGenerator` uses these to emit a fully-populated constructor.
 
-- [ ] Define `FieldModel(originalName, originalType, resolvedType, targetConfigs)`
-- [ ] Implement `ClassResolver.resolve()` — fail if not a `data class`
-- [ ] `EntityGenerator` emits `data class UserEntity(val id: Long, val name: String, ...)`
+- [x] Define `FieldModel(originalName, originalType, resolvedType, targetConfigs)`
+- [x] Implement `ClassResolver.resolve()` — fail if not a `data class`
+- [x] `EntityGenerator` emits `data class UserEntity(val id: Long, val name: String, ...)`
 
 **Verify:**
 ```bash

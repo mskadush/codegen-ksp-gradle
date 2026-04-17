@@ -9,7 +9,8 @@ import kotlin.sequences.forEach
 class DomainMappingProcessorProvider : SymbolProcessorProvider {
     override fun create(environment: SymbolProcessorEnvironment) = object : SymbolProcessor {
 
-        private val entityGenerator = EntityGenerator(environment.codeGenerator, environment.logger)
+        private val classResolver = ClassResolver(environment.logger)
+        private val entityGenerator = EntityGenerator(environment.codeGenerator, environment.logger, classResolver)
 
         override fun process(resolver: Resolver): List<KSAnnotated> {
             resolver.getSymbolsWithAnnotation("com.example.annotations.EntitySpec")
