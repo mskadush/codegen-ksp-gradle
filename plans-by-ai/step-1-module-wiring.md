@@ -2,7 +2,7 @@
 
 ## Context
 
-Implements Step 1 of `003-full-domain-mapping-processor.md`. Wires the `:runtime` module, adds KotlinPoet to the processor, and creates an empty `DomainMappingProcessor` that scans `@EntitySpec` symbols without emitting any output yet.
+Implements Step 1 of `003-full-domain-mapping-processor.md`. Wires the `:runtime` module, adds KotlinPoet to the processor, and creates `DomainMappingProcessorProvider` with an inline anonymous `SymbolProcessor` that scans `@EntitySpec` symbols without emitting any output yet.
 
 ---
 
@@ -14,8 +14,7 @@ Implements Step 1 of `003-full-domain-mapping-processor.md`. Wires the `:runtime
   - `implementation("com.squareup:kotlinpoet:2.3.0")`
   - `implementation("com.squareup:kotlinpoet-ksp:2.3.0")`
 - [x] Add `implementation(project(":runtime"))` to `app/build.gradle.kts`
-- [x] Create `processor/src/main/kotlin/DomainMappingProcessor.kt`
-- [x] Create `processor/src/main/kotlin/DomainMappingProcessorProvider.kt`
+- [x] Create `processor/src/main/kotlin/DomainMappingProcessorProvider.kt` (inline anonymous `SymbolProcessor`)
 - [x] Append `DomainMappingProcessorProvider` to `META-INF/services/com.google.devtools.ksp.processing.SymbolProcessorProvider`
 
 ---

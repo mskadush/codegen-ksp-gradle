@@ -11,7 +11,7 @@ Implements the specification in `000-init-spec.md` using the existing Gradle pro
 ```
 codegen-ksp-gradle/
 ├── annotations/   # annotation + enum definitions (already complete)
-├── processor/     # 16-step KSP processor (DomainMappingProcessor)
+├── processor/     # 16-step KSP processor (DomainMappingProcessorProvider)
 ├── runtime/       # FieldTransformer, RequestValidator, ValidationContext
 └── app/           # consumer / sample module
 ```
@@ -42,8 +42,7 @@ codegen-ksp-gradle/
 - [x] Create `runtime/build.gradle.kts`
 - [x] Add KotlinPoet to `processor/build.gradle.kts`
 - [x] Add `implementation(project(":runtime"))` to `app/build.gradle.kts`
-- [x] Create `DomainMappingProcessor` (scans `@EntitySpec`; no output yet)
-- [x] Create `DomainMappingProcessorProvider`
+- [x] Create `DomainMappingProcessorProvider` with inline anonymous `SymbolProcessor` (scans `@EntitySpec`; no output yet)
 - [x] Register provider in `META-INF/services/`
 
 **Verify:**
@@ -60,7 +59,7 @@ First KotlinPoet output. `EntityGenerator` emits a bare `data class UserEntity()
 - [x] Implement `EntityGenerator.generate(spec, env)` using KotlinPoet `TypeSpec.classBuilder`
 - [x] Add `UserEntitySpec` object annotated with `@EntitySpec(for_ = User::class, table = "users")` to `app/`
 - [x] Add `User` domain data class to `app/`
-- [x] Wire `EntityGenerator` in `DomainMappingProcessor.process()`
+- [x] Wire `EntityGenerator` in `DomainMappingProcessorProvider` (inline object) `.process()`
 
 **Verify:**
 ```bash

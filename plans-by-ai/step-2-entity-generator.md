@@ -2,7 +2,7 @@
 
 ## Context
 
-Step 1 wired all modules and scaffolded `DomainMappingProcessor` (scans `@EntitySpec`, logs, produces no output). Step 2 introduces the first KotlinPoet output: emit a bare `class UserEntity()` for each `@EntitySpec`-annotated object. Also introduces the `User` domain class and `UserEntitySpec` in `app/` to drive the processor.
+Step 1 wired all modules and scaffolded `DomainMappingProcessorProvider` with an inline anonymous `SymbolProcessor` (scans `@EntitySpec`, logs, produces no output). Step 2 introduces the first KotlinPoet output: emit a bare `class UserEntity()` for each `@EntitySpec`-annotated object. Also introduces the `User` domain class and `UserEntitySpec` in `app/` to drive the processor.
 
 ---
 
@@ -11,7 +11,7 @@ Step 1 wired all modules and scaffolded `DomainMappingProcessor` (scans `@Entity
 - [x] Create `app/src/main/kotlin/User.kt`
 - [x] Create `app/src/main/kotlin/UserEntitySpec.kt`
 - [x] Create `processor/src/main/kotlin/EntityGenerator.kt`
-- [x] Update `processor/src/main/kotlin/DomainMappingProcessor.kt`
+- [x] Update `processor/src/main/kotlin/DomainMappingProcessorProvider.kt`
 - [x] Run `./gradlew :app:kspKotlin` — confirm `UserEntity.kt` is generated
 - [x] Mark step 2 checkboxes in `003-full-domain-mapping-processor.md`
 
@@ -68,27 +68,26 @@ class EntityGenerator(
 
 > Note: plain `class` (not `data class`) — Kotlin requires ≥1 constructor parameter for data classes; fields added in Step 3.
 
-### `processor/src/main/kotlin/DomainMappingProcessor.kt` (update)
+### `processor/src/main/kotlin/DomainMappingProcessorProvider.kt` (update)
 ```kotlin
-import com.google.devtools.ksp.processing.CodeGenerator
-import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessor
+import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
+import com.google.devtools.ksp.processing.SymbolProcessorProvider
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 
-class DomainMappingProcessor(
-    private val logger: KSPLogger,
-    private val codeGenerator: CodeGenerator,
-) : SymbolProcessor {
+class DomainMappingProcessorProvider : SymbolProcessorProvider {
+    override fun create(environment: SymbolProcessorEnvironment) = object : SymbolProcessor {
 
-    private val entityGenerator = EntityGenerator(codeGenerator, logger)
+        private val entityGenerator = EntityGenerator(environment.codeGenerator, environment.logger)
 
-    override fun process(resolver: Resolver): List<KSAnnotated> {
-        resolver.getSymbolsWithAnnotation("com.example.annotations.EntitySpec")
-            .filterIsInstance<KSClassDeclaration>()
-            .forEach { entityGenerator.generate(it) }
-        return emptyList()
+        override fun process(resolver: Resolver): List<KSAnnotated> {
+            resolver.getSymbolsWithAnnotation("com.example.annotations.EntitySpec")
+                .filterIsInstance<KSClassDeclaration>()
+                .forEach { entityGenerator.generate(it) }
+            return emptyList()
+        }
     }
 }
 ```
