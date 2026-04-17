@@ -14,5 +14,6 @@ repositories {
 
 dependencies {
     implementation(project(":annotations"))
+    implementation(project(":runtime"))
     ksp(project(":processor"))
 }

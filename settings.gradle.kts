@@ -15,3 +15,4 @@ dependencyResolutionManagement {
 include(":annotations")
 include(":app")
 include(":processor")
+include(":runtime")

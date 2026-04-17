@@ -1,1 +1,1 @@
-- Whenever you are creating a plan, create a checklist for approval and always save the plan under ./plans-by-ai. Update the checklist in the plan as you go along. The plan is the source of truth and current state of the implementation
+- Whenever you are creating a plan, create a checklist for approval and always save the plan under ./plans-by-ai/<XXX-plan-name>. Update the checklist in the plan as you go along. The plan is the source of truth and current state of the implementation
