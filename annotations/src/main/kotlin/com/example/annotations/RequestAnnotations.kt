@@ -2,10 +2,38 @@ package com.example.annotations
 
 import kotlin.reflect.KClass
 
+/**
+ * Groups [CreateSpec] and [UpdateSpec] annotations under a single domain class reference.
+ *
+ * Place this on a spec class alongside [CreateSpec] and/or [UpdateSpec] to associate the
+ * generated request classes with [for_].
+ *
+ * @param for_ The domain class these request specs are generated for.
+ */
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.SOURCE)
 annotation class RequestSpec(val for_: KClass<*>)
 
+/**
+ * Configures the generation of a create-request class for a domain type.
+ *
+ * Used together with [RequestSpec] on the same spec class. The processor generates a
+ * `data class` named `<DomainClass><suffix>` containing all non-excluded domain fields,
+ * each decorated with the specified [Rule] constraints.
+ *
+ * Example:
+ * ```kotlin
+ * @RequestSpec(for_ = User::class)
+ * @CreateSpec(
+ *     fields = [CreateField(property = "email", rules = [Rule.Email::class, Rule.Required::class])]
+ * )
+ * class UserRequestSpec
+ * ```
+ *
+ * @param suffix Appended to the domain class name to form the create-request class name (default: `"CreateRequest"`).
+ * @param validator A [RequestValidator] subclass invoked after the object is constructed.
+ * @param fields Per-field configuration; fields not listed here are included with no rules.
+ */
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.SOURCE)
 annotation class CreateSpec(
@@ -14,6 +42,17 @@ annotation class CreateSpec(
     val fields: Array<CreateField> = []
 )
 
+/**
+ * Configures the generation of an update-request class for a domain type.
+ *
+ * Used together with [RequestSpec] on the same spec class. When [partial] is `true` all fields
+ * are made nullable so callers can omit properties they do not wish to update.
+ *
+ * @param suffix Appended to the domain class name to form the update-request class name (default: `"UpdateRequest"`).
+ * @param partial When `true`, every field in the generated class is nullable (default: `true`).
+ * @param validator A [RequestValidator] subclass invoked after the object is constructed.
+ * @param fields Per-field configuration; fields not listed here are included with no rules.
+ */
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.SOURCE)
 annotation class UpdateSpec(
@@ -23,12 +62,26 @@ annotation class UpdateSpec(
     val fields: Array<UpdateField> = []
 )
 
+/**
+ * Per-field configuration for a field inside a [CreateSpec].
+ *
+ * @param property Name of the domain property to configure.
+ * @param rules Validation rules the generated class will enforce for this field.
+ * @param exclude When `true`, the field is omitted from the generated create-request class.
+ */
 annotation class CreateField(
     val property: String,
     val rules: Array<Rule> = [],
     val exclude: Boolean = false
 )
 
+/**
+ * Per-field configuration for a field inside an [UpdateSpec].
+ *
+ * @param property Name of the domain property to configure.
+ * @param rules Validation rules the generated class will enforce for this field.
+ * @param exclude When `true`, the field is omitted from the generated update-request class.
+ */
 annotation class UpdateField(
     val property: String,
     val rules: Array<Rule> = [],
