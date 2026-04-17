@@ -15,23 +15,8 @@
  * limitations under the License.
  */
 
-import com.example.annotations.HelloWorld
-
 /**
  * The main entrypoint.
- *
- * Annotated with `HelloWorld` to trigger the processor which generates `helloWorld`.
  */
-@HelloWorld(target = UnseenClass::class)
 fun main() {
-    helloWorld()
-}
-
-data class UnseenClass(
-  val name: String,
-  val location: Place,
-) {
-    data class Place(
-      val address: String,
-    )
 }
