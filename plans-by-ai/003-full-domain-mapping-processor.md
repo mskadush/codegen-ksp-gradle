@@ -88,11 +88,11 @@ First KotlinPoet output. `EntityGenerator` emits a bare `data class UserEntity()
 
 ### Step 4 — Field overrides: `@Column`, `exclude`, `NullableOverride` + `@Table`
 
-- [ ] Apply `column` → emit `@Column(name = "...")` on field
-- [ ] Apply `exclude = true` → field absent from generated class
-- [ ] Apply `NullableOverride.YES / NO` → override Kotlin nullability on generated field type
-- [ ] Emit `@Table(name = "...", schema = "...")` on entity class from `EntitySpec.table/schema`
-- [ ] Add `@EntityField` overrides to `UserEntitySpec` in `app/` to exercise all three cases
+- [x] Apply `column` → emit `@Column(name = "...")` on field
+- [x] Apply `exclude = true` → field absent from generated class
+- [x] Apply `NullableOverride.YES / NO` → override Kotlin nullability on generated field type
+- [x] Emit `@Table(name = "...", schema = "...")` on entity class from `EntitySpec.table/schema`
+- [x] Add `@EntityField` overrides to `UserEntitySpec` in `app/` to exercise all three cases
 
 **Verify:**
 ```bash

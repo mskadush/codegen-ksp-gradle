@@ -16,4 +16,5 @@ dependencies {
     implementation(project(":annotations"))
     implementation(project(":runtime"))
     ksp(project(":processor"))
+    compileOnly("jakarta.persistence:jakarta.persistence-api:3.1.0")
 }
