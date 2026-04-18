@@ -7,6 +7,7 @@ import kotlin.reflect.KClass
  *
  * Use this when you need the code generator to attach framework-specific annotations
  * (e.g. JPA, Jackson) that are not natively modelled by the DSL.
+ * // TODO: MS - Add Imports as part of annotations
  *
  * @param annotation The annotation class to emit (e.g. `jakarta.persistence.Table::class`).
  * @param members Key-value pairs for the annotation's parameters.
