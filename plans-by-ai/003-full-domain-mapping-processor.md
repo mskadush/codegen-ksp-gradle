@@ -140,10 +140,10 @@ First KotlinPoet output. `EntityGenerator` emits a bare `data class UserEntity()
 
 ### Step 7 — `RequestGenerator`: `UserCreateRequest` + `init {}` validation
 
-- [ ] Scan `@RequestSpec` + `@CreateSpec`; implement `RequestGenerator`
-- [ ] Emit `data class UserCreateRequest(...)` with `init {}` containing `require()` calls from `Rule.*`
-- [ ] Rule → require mapping: `MinLength(n)` → `require(field.length >= n)`, `Email` → `require(field.contains("@"))`, `NotBlank` → `require(field.isNotBlank())`, etc.
-- [ ] Add `UserRequestSpec` to `app/` with at least two rules
+- [x] Scan `@RequestSpec` + `@CreateSpec`; implement `RequestGenerator`
+- [x] Emit `data class UserCreateRequest(...)` with `init {}` containing `require()` calls from `Rule.*`
+- [x] Rule → require mapping: `MinLength(n)` → `require(field.length >= n)`, `Email` → `require(field.contains("@"))`, `NotBlank` → `require(field.isNotBlank())`, etc.
+- [x] Add `UserRequestSpec` to `app/` with at least two rules
 
 **Verify:**
 ```bash

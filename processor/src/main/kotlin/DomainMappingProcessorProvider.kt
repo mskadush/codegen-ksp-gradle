@@ -31,6 +31,7 @@ class DomainMappingProcessorProvider : SymbolProcessorProvider {
         private val entityGenerator = EntityGenerator(environment.codeGenerator, environment.logger, classResolver)
         private val dtoGenerator = DtoGenerator(environment.codeGenerator, environment.logger, classResolver)
         private val mapperGenerator = MapperGenerator(environment.codeGenerator, environment.logger, classResolver)
+        private val requestGenerator = RequestGenerator(environment.codeGenerator, environment.logger, classResolver)
 
         /**
          * Processes one compilation round.
@@ -52,6 +53,11 @@ class DomainMappingProcessorProvider : SymbolProcessorProvider {
               .forEach { spec ->
                   dtoGenerator.generate(spec)
                   mapperGenerator.generateDtoMappers(spec)
+              }
+            resolver.getSymbolsWithAnnotation("com.example.annotations.RequestSpec")
+              .filterIsInstance<KSClassDeclaration>()
+              .forEach { spec ->
+                  requestGenerator.generate(spec)
               }
             return emptyList()
         }

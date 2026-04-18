@@ -28,4 +28,6 @@ fun main() {
     println(dto)
     val domainFromDto = dto.toDomain()
     println(domainFromDto)
+    val createRequest = UserCreateRequest(id = 1L, name = "Alice", email = "alice@example.com")
+    println(createRequest)
 }

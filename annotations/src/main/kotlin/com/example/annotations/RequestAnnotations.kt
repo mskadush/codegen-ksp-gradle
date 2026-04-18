@@ -66,12 +66,17 @@ annotation class UpdateSpec(
  * Per-field configuration for a field inside a [CreateSpec].
  *
  * @param property Name of the domain property to configure.
- * @param rules Validation rules the generated class will enforce for this field.
+ * @param rules Simple (no-parameter) validation rules referenced as class literals,
+ *   e.g. `[Rule.Email::class, Rule.NotBlank::class]`.
+ * @param minLength When ≥ 0, emits `require(field.length >= minLength)` in the generated `init {}`.
+ * @param maxLength When ≥ 0, emits `require(field.length <= maxLength)` in the generated `init {}`.
  * @param exclude When `true`, the field is omitted from the generated create-request class.
  */
 annotation class CreateField(
     val property: String,
-    val rules: Array<Rule> = [],
+    val rules: Array<kotlin.reflect.KClass<out Annotation>> = [],
+    val minLength: Int = -1,
+    val maxLength: Int = -1,
     val exclude: Boolean = false
 )
 
@@ -79,11 +84,16 @@ annotation class CreateField(
  * Per-field configuration for a field inside an [UpdateSpec].
  *
  * @param property Name of the domain property to configure.
- * @param rules Validation rules the generated class will enforce for this field.
+ * @param rules Simple (no-parameter) validation rules referenced as class literals,
+ *   e.g. `[Rule.NotBlank::class]`.
+ * @param minLength When ≥ 0, emits `require(field.length >= minLength)` in the generated `init {}`.
+ * @param maxLength When ≥ 0, emits `require(field.length <= maxLength)` in the generated `init {}`.
  * @param exclude When `true`, the field is omitted from the generated update-request class.
  */
 annotation class UpdateField(
     val property: String,
-    val rules: Array<Rule> = [],
+    val rules: Array<kotlin.reflect.KClass<out Annotation>> = [],
+    val minLength: Int = -1,
+    val maxLength: Int = -1,
     val exclude: Boolean = false
 )
