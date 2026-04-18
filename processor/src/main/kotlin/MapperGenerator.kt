@@ -84,6 +84,82 @@ class MapperGenerator(
         logger.info("MapperGenerator: generated $fileName.kt with toEntity() and toDomain()")
     }
 
+    fun generateDtoMappers(spec: KSClassDeclaration) {
+        val annotation = spec.annotations.first { it.shortName.asString() == "DtoSpec" }
+        val forArg = annotation.arguments.first { it.name?.asString() == "for_" }
+        val domainClass = (forArg.value as KSType).declaration as KSClassDeclaration
+        val domainName = domainClass.simpleName.asString()
+        val domainPackage = domainClass.packageName.asString()
+
+        val suffix = annotation.arguments.firstOrNull { it.name?.asString() == "suffix" }?.value as? String ?: "Dto"
+        val prefix = annotation.arguments.firstOrNull { it.name?.asString() == "prefix" }?.value as? String ?: ""
+        val dtoName = "$prefix${domainName}$suffix"
+
+        val excludedFieldStrategy = annotation.argEnumName("excludedFieldStrategy")
+
+        val fields = classResolver.resolve(domainClass) ?: return
+
+        val overrideMap: Map<String, KSAnnotation> = spec.annotations
+            .filter { it.shortName.asString() == "DtoField" }
+            .associateBy { it.argString("property") }
+
+        val domainClassName = ClassName(domainPackage, domainName)
+        val dtoClassName = ClassName("", dtoName)
+
+        // Fields included in the DTO (not excluded), with their renamed names
+        data class DtoFieldInfo(val originalName: String, val dtoName: String, val resolvedType: TypeName)
+        val includedFields = fields.mapNotNull { field ->
+            val override = overrideMap[field.originalName]
+            if (override?.argBool("exclude") == true) return@mapNotNull null
+            val rename = override?.argString("rename") ?: ""
+            val dtoFieldName = if (rename.isNotBlank()) rename else field.originalName
+            DtoFieldInfo(field.originalName, dtoFieldName, field.resolvedType)
+        }
+
+        // fun DomainClass.toDto(): DtoClass
+        val toDtoArgs = includedFields.joinToString(", ") { "${it.dtoName} = this.${it.originalName}" }
+        val toDto = FunSpec.builder("toDto")
+            .receiver(domainClassName)
+            .returns(dtoClassName)
+            .addStatement("return %T($toDtoArgs)", dtoClassName)
+            .build()
+
+        // fun DtoClass.toDomain(): DomainClass
+        val toDomainArgs = fields.joinToString(", ") { field ->
+            val override = overrideMap[field.originalName]
+            when {
+                override?.argBool("exclude") == true -> when (excludedFieldStrategy) {
+                    "REQUIRE_MANUAL" -> "${field.originalName} = TODO(\"manual mapping required for ${field.originalName}\")"
+                    else -> "${field.originalName} = ${defaultValueLiteral(field.resolvedType)}"
+                }
+                else -> {
+                    val rename = override?.argString("rename") ?: ""
+                    val dtoFieldName = if (rename.isNotBlank()) rename else field.originalName
+                    val nullable = override?.argEnumName("nullable") ?: "UNSET"
+                    if (nullable == "YES" && !field.resolvedType.isNullable) {
+                        "${field.originalName} = this.$dtoFieldName!!"
+                    } else {
+                        "${field.originalName} = this.$dtoFieldName"
+                    }
+                }
+            }
+        }
+        val toDomain = FunSpec.builder("toDomain")
+            .receiver(dtoClassName)
+            .returns(domainClassName)
+            .addStatement("return %T($toDomainArgs)", domainClassName)
+            .build()
+
+        val fileName = "${dtoName}Mappers"
+        FileSpec.builder(domainPackage, fileName)
+            .addFunction(toDto)
+            .addFunction(toDomain)
+            .build()
+            .writeTo(codeGenerator, aggregating = false)
+
+        logger.info("MapperGenerator: generated $fileName.kt with toDto() and toDomain()")
+    }
+
     private fun defaultValueLiteral(type: TypeName): String {
         if (type.isNullable) return "null"
         return when (type.toString()) {

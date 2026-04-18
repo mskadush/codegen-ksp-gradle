@@ -24,4 +24,8 @@ fun main() {
     println(entity)
     val domainBack = entity.toDomain()
     println(domainBack)
+    val dto = user.toDto()
+    println(dto)
+    val domainFromDto = dto.toDomain()
+    println(domainFromDto)
 }

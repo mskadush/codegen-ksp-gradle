@@ -123,11 +123,11 @@ First KotlinPoet output. `EntityGenerator` emits a bare `data class UserEntity()
 
 ### Step 6 — `DtoGenerator`: `UserResponse` + DTO mappers
 
-- [ ] Scan `@DtoSpec`; implement `DtoGenerator` (mirrors `EntityGenerator`)
-- [ ] Apply `rename`, `exclude`, `NullableOverride` on DTO fields
-- [ ] Emit `fun User.toDto(): UserResponse` and `fun UserResponse.toDomain(): User`
-- [ ] Add `UserDtoSpec` to `app/` with at least one renamed and one excluded field
-- [ ] Respect `ExcludedFieldStrategy.REQUIRE_MANUAL` → emit `TODO("manual mapping required")` comment
+- [x] Scan `@DtoSpec`; implement `DtoGenerator` (mirrors `EntityGenerator`)
+- [x] Apply `rename`, `exclude`, `NullableOverride` on DTO fields
+- [x] Emit `fun User.toDto(): UserResponse` and `fun UserResponse.toDomain(): User`
+- [x] Add `UserDtoSpec` to `app/` with at least one renamed and one excluded field
+- [x] Respect `ExcludedFieldStrategy.REQUIRE_MANUAL` → emit `TODO("manual mapping required")` comment
 
 **Verify:**
 ```bash
