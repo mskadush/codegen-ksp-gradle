@@ -187,12 +187,12 @@ First KotlinPoet output. `EntityGenerator` emits a bare `data class UserEntity()
 
 ### Step 10 — Nested type resolution + cycle detection
 
-- [ ] Walk all `FieldModel` types; check `SpecRegistry` for mapped nested types
-- [ ] Classify each field as `Primitive`, `MappedObject`, or `MappedCollection`
-- [ ] Use the target-type name (`UserEntity`) as the field type when the nested domain type is mapped
-- [ ] DFS cycle detection on type dependency graph
+- [x] Walk all `FieldModel` types; check `SpecRegistry` for mapped nested types
+- [x] Classify each field as `Primitive`, `MappedObject`, or `MappedCollection`
+- [x] Use the target-type name (`UserEntity`) as the field type when the nested domain type is mapped
+- [x] DFS cycle detection on type dependency graph
   - Error: `Circular mapping detected: A -> B -> A. Use exclude = true to break the cycle.`
-- [ ] Implement `UnmappedNestedStrategy.FAIL / INLINE / EXCLUDE` logic
+- [x] Implement `UnmappedNestedStrategy.FAIL / INLINE / EXCLUDE` logic
 
 **Verify:**
 ```bash

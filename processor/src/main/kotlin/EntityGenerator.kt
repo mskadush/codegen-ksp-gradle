@@ -8,7 +8,9 @@ import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
+import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.PropertySpec
+import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.writeTo
 
@@ -21,6 +23,9 @@ import com.squareup.kotlinpoet.ksp.writeTo
  * annotations, and `NullableOverride` adjusts Kotlin nullability. The class-level
  * `@Table(name, schema)` is emitted when `EntitySpec.table` is non-blank.
  *
+ * Nested domain class fields are substituted with their generated entity type (e.g.
+ * `address: Address` becomes `address: AddressEntity`) when the nested type has its own spec.
+ *
  * @param codeGenerator KSP code generation API used to write output files.
  * @param logger KSP logger for compile-time diagnostics.
  * @param classResolver Resolves and validates the domain class's fields.
@@ -30,11 +35,6 @@ class EntityGenerator(
     private val logger: KSPLogger,
     private val classResolver: ClassResolver,
 ) {
-    /**
-     * Generates an entity class for the given [spec] class.
-     *
-     * @param spec The `@EntitySpec`-annotated class declaration from the compilation round.
-     */
     fun generate(spec: KSClassDeclaration) {
         val annotation = spec.annotations.first { it.shortName.asString() == "EntitySpec" }
         val forArg = annotation.arguments.first { it.name?.asString() == "for_" }
@@ -44,14 +44,15 @@ class EntityGenerator(
 
         val tableArg  = annotation.arguments.firstOrNull { it.name?.asString() == "table"  }?.value as? String ?: ""
         val schemaArg = annotation.arguments.firstOrNull { it.name?.asString() == "schema" }?.value as? String ?: ""
+        val unmappedStrategy = annotation.argEnumName("unmappedNestedStrategy").let {
+            if (it == "UNSET") "FAIL" else it
+        }
 
-        val fields = classResolver.resolve(domainClass) ?: return
-
-        // Build override map from @EntityField annotations on the spec object.
-        // Kotlin @Repeatable: KSP returns each instance separately in spec.annotations.
         val overrideMap: Map<String, KSAnnotation> = spec.annotations
             .filter { it.shortName.asString() == "EntityField" }
             .associateBy { it.argString("property") }
+
+        val fields = classResolver.resolveWithKinds(domainClass, unmappedStrategy, overrideMap) ?: return
 
         // @Table on class
         val tableAnnotation = AnnotationSpec.builder(ClassName("jakarta.persistence", "Table")).apply {
@@ -71,10 +72,19 @@ class EntityGenerator(
 
             if (override?.argBool("exclude") == true) continue
 
+            // Determine base type from FieldKind (substitutes nested types)
+            val baseType: TypeName = when (val kind = field.fieldKind) {
+                is FieldKind.MappedObject -> kind.targetClassName
+                is FieldKind.MappedCollection -> {
+                    ClassName.bestGuess(kind.collectionFQN).parameterizedBy(kind.targetClassName)
+                }
+                else -> field.resolvedType
+            }
+
             val finalType = when (override?.argEnumName("nullable") ?: "UNSET") {
-                "YES" -> field.resolvedType.copy(nullable = true)
-                "NO"  -> field.resolvedType.copy(nullable = false)
-                else  -> field.resolvedType
+                "YES" -> baseType.copy(nullable = true)
+                "NO"  -> baseType.copy(nullable = false)
+                else  -> baseType
             }
 
             ctorBuilder.addParameter(field.originalName, finalType)
