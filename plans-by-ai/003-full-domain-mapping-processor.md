@@ -156,9 +156,9 @@ First KotlinPoet output. `EntityGenerator` emits a bare `data class UserEntity()
 
 ### Step 8 — `UpdateRequest` with `partial = true`
 
-- [ ] Extend `RequestGenerator` to emit `UserUpdateRequest` from `@UpdateSpec`
-- [ ] When `partial = true`: all fields become `val field: Type? = null`
-- [ ] Apply `UpdateField` rules the same as `CreateField`
+- [x] Extend `RequestGenerator` to emit `UserUpdateRequest` from `@UpdateSpec`
+- [x] When `partial = true`: all fields become `val field: Type? = null`
+- [x] Apply `UpdateField` rules the same as `CreateField`
 
 **Verify:**
 ```bash

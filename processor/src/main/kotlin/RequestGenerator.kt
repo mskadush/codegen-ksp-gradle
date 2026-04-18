@@ -7,17 +7,17 @@ import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
+import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.writeTo
 
 /**
- * Generates a `data class` create-request from a spec class annotated with `@RequestSpec` + `@CreateSpec`.
+ * Generates `data class` request objects from spec classes annotated with `@RequestSpec`.
  *
- * The generated class is named `<DomainClass><suffix>` (default suffix: `"CreateRequest"`) and
- * mirrors the primary constructor of the domain class. An `init {}` block is emitted containing
- * `require()` calls for each validation rule declared in `@CreateField.rules`, `minLength`, and
- * `maxLength`.
+ * - `@CreateSpec` → `<DomainClass>CreateRequest` with `require()` validation in `init {}`.
+ * - `@UpdateSpec` → `<DomainClass>UpdateRequest`; when `partial = true` every field is nullable
+ *   with a `= null` default and `require()` calls are wrapped in null-checks.
  *
  * @param codeGenerator KSP code generation API used to write output files.
  * @param logger KSP logger for compile-time diagnostics.
@@ -30,38 +30,41 @@ class RequestGenerator(
 ) {
 
     /**
-     * Generates the create-request class for the given [spec] class.
+     * Entry point — processes both `@CreateSpec` and `@UpdateSpec` on the same spec class.
      *
      * @param spec The `@RequestSpec`-annotated class declaration from the compilation round.
      */
     fun generate(spec: KSClassDeclaration) {
         val requestSpecAnnotation = spec.annotations.firstOrNull { it.shortName.asString() == "RequestSpec" }
             ?: return
-        val createSpecAnnotation = spec.annotations.firstOrNull { it.shortName.asString() == "CreateSpec" }
-            ?: return
 
         val forArg = requestSpecAnnotation.arguments.first { it.name?.asString() == "for_" }
         val domainClass = (forArg.value as KSType).declaration as KSClassDeclaration
-        val domainName = domainClass.simpleName.asString()
 
-        val suffix = createSpecAnnotation.arguments.firstOrNull { it.name?.asString() == "suffix" }?.value as? String
+        spec.annotations.firstOrNull { it.shortName.asString() == "CreateSpec" }
+            ?.let { generateCreate(domainClass, it) }
+
+        spec.annotations.firstOrNull { it.shortName.asString() == "UpdateSpec" }
+            ?.let { generateUpdate(domainClass, it) }
+    }
+
+    // --- CreateSpec ---
+
+    private fun generateCreate(domainClass: KSClassDeclaration, createSpec: KSAnnotation) {
+        val domainName = domainClass.simpleName.asString()
+        val suffix = createSpec.arguments.firstOrNull { it.name?.asString() == "suffix" }?.value as? String
             ?: "CreateRequest"
         val requestName = "$domainName$suffix"
 
         val fields = classResolver.resolve(domainClass) ?: return
-
-        // Build override map from the @CreateSpec.fields array
-        val fieldOverrides = buildFieldOverrideMap(createSpecAnnotation)
+        val fieldOverrides = buildFieldOverrideMap(createSpec)
 
         val ctorBuilder = FunSpec.constructorBuilder()
-        val classBuilder = TypeSpec.classBuilder(requestName)
-            .addModifiers(KModifier.DATA)
-
+        val classBuilder = TypeSpec.classBuilder(requestName).addModifiers(KModifier.DATA)
         val requireStatements = mutableListOf<String>()
 
         for (field in fields) {
             val override = fieldOverrides[field.originalName]
-
             if (override?.argBool("exclude") == true) continue
 
             ctorBuilder.addParameter(field.originalName, field.resolvedType)
@@ -71,7 +74,6 @@ class RequestGenerator(
                     .build()
             )
 
-            // Collect require() calls for this field
             if (override != null) {
                 requireStatements += buildRequireStatements(field.originalName, override)
             }
@@ -81,9 +83,7 @@ class RequestGenerator(
 
         if (requireStatements.isNotEmpty()) {
             val initBlock = CodeBlock.builder()
-            for (stmt in requireStatements) {
-                initBlock.addStatement(stmt)
-            }
+            for (stmt in requireStatements) initBlock.addStatement(stmt)
             classBuilder.addInitializerBlock(initBlock.build())
         }
 
@@ -95,27 +95,98 @@ class RequestGenerator(
         logger.info("RequestGenerator: generated $requestName with ${requireStatements.size} require() call(s)")
     }
 
+    // --- UpdateSpec ---
+
+    private fun generateUpdate(domainClass: KSClassDeclaration, updateSpec: KSAnnotation) {
+        val domainName = domainClass.simpleName.asString()
+        val suffix = updateSpec.arguments.firstOrNull { it.name?.asString() == "suffix" }?.value as? String
+            ?: "UpdateRequest"
+        val partial = updateSpec.arguments.firstOrNull { it.name?.asString() == "partial" }?.value as? Boolean
+            ?: true
+        val requestName = "$domainName$suffix"
+
+        val fields = classResolver.resolve(domainClass) ?: return
+        val fieldOverrides = buildFieldOverrideMap(updateSpec)
+
+        val ctorBuilder = FunSpec.constructorBuilder()
+        val classBuilder = TypeSpec.classBuilder(requestName).addModifiers(KModifier.DATA)
+        val initBlock = CodeBlock.builder()
+        var hasValidation = false
+
+        for (field in fields) {
+            val override = fieldOverrides[field.originalName]
+            if (override?.argBool("exclude") == true) continue
+
+            if (partial) {
+                val nullableType = field.resolvedType.copy(nullable = true)
+                val param = ParameterSpec.builder(field.originalName, nullableType)
+                    .defaultValue("null")
+                    .build()
+                ctorBuilder.addParameter(param)
+                classBuilder.addProperty(
+                    PropertySpec.builder(field.originalName, nullableType)
+                        .initializer(field.originalName)
+                        .build()
+                )
+
+                if (override != null) {
+                    val stmts = buildRequireStatements(field.originalName, override)
+                    if (stmts.isNotEmpty()) {
+                        initBlock.beginControlFlow("if (%N != null)", field.originalName)
+                        for (stmt in stmts) initBlock.addStatement(stmt)
+                        initBlock.endControlFlow()
+                        hasValidation = true
+                    }
+                }
+            } else {
+                ctorBuilder.addParameter(field.originalName, field.resolvedType)
+                classBuilder.addProperty(
+                    PropertySpec.builder(field.originalName, field.resolvedType)
+                        .initializer(field.originalName)
+                        .build()
+                )
+
+                if (override != null) {
+                    val stmts = buildRequireStatements(field.originalName, override)
+                    for (stmt in stmts) initBlock.addStatement(stmt)
+                    if (stmts.isNotEmpty()) hasValidation = true
+                }
+            }
+        }
+
+        classBuilder.primaryConstructor(ctorBuilder.build())
+        if (hasValidation) classBuilder.addInitializerBlock(initBlock.build())
+
+        FileSpec.builder("", requestName)
+            .addType(classBuilder.build())
+            .build()
+            .writeTo(codeGenerator, aggregating = false)
+
+        logger.info("RequestGenerator: generated $requestName (partial=$partial)")
+    }
+
+    // --- Helpers ---
+
     /**
-     * Reads the `fields` array from a `@CreateSpec` annotation and returns a map from property
-     * name to its `@CreateField` annotation.
+     * Reads the `fields` array from a `@CreateSpec` or `@UpdateSpec` annotation and returns a map
+     * from property name to its field annotation.
      */
     @Suppress("UNCHECKED_CAST")
-    private fun buildFieldOverrideMap(createSpec: KSAnnotation): Map<String, KSAnnotation> {
-        val fieldsArg = createSpec.arguments.firstOrNull { it.name?.asString() == "fields" }
+    private fun buildFieldOverrideMap(spec: KSAnnotation): Map<String, KSAnnotation> {
+        val fieldsArg = spec.arguments.firstOrNull { it.name?.asString() == "fields" }
             ?: return emptyMap()
         val fieldAnnotations = fieldsArg.value as? List<KSAnnotation> ?: return emptyMap()
         return fieldAnnotations.associateBy { it.argString("property") }
     }
 
     /**
-     * Maps each rule declared in a `@CreateField` annotation to a `require()` statement string.
+     * Maps each rule declared in a `@CreateField` or `@UpdateField` annotation to a `require()` statement string.
      */
     @Suppress("UNCHECKED_CAST")
-    private fun buildRequireStatements(fieldName: String, createField: KSAnnotation): List<String> {
+    private fun buildRequireStatements(fieldName: String, fieldAnnotation: KSAnnotation): List<String> {
         val statements = mutableListOf<String>()
 
-        // Simple rules: Array<KClass<out Annotation>> — each element is a KSType
-        val rulesArg = createField.arguments.firstOrNull { it.name?.asString() == "rules" }
+        val rulesArg = fieldAnnotation.arguments.firstOrNull { it.name?.asString() == "rules" }
         val ruleTypes = rulesArg?.value as? List<KSType> ?: emptyList()
 
         for (ruleType in ruleTypes) {
@@ -124,9 +195,8 @@ class RequestGenerator(
             if (stmt != null) statements += stmt
         }
 
-        // Parameterised rules via dedicated fields
-        val minLength = createField.arguments.firstOrNull { it.name?.asString() == "minLength" }?.value as? Int ?: -1
-        val maxLength = createField.arguments.firstOrNull { it.name?.asString() == "maxLength" }?.value as? Int ?: -1
+        val minLength = fieldAnnotation.arguments.firstOrNull { it.name?.asString() == "minLength" }?.value as? Int ?: -1
+        val maxLength = fieldAnnotation.arguments.firstOrNull { it.name?.asString() == "maxLength" }?.value as? Int ?: -1
 
         if (minLength >= 0) {
             statements += """require($fieldName.length >= $minLength) { "$fieldName must be at least $minLength characters" }"""
