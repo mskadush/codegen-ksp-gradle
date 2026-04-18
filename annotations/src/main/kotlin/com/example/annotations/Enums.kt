@@ -39,18 +39,6 @@ enum class UnmappedNestedStrategy {
 }
 
 /**
- * Controls how the processor handles a domain field that maps to a related entity but has no explicit [Relation].
- *
- * Used by [EntitySpec.missingRelationStrategy].
- */
-enum class MissingRelationStrategy {
-    /** Abort generation with a compile-time error (default). */
-    FAIL,
-    /** Attempt to infer the relationship type from the field's type. */
-    INFER
-}
-
-/**
  * Defines what happens to excluded fields in a generated DTO.
  *
  * Used by [DtoSpec.excludedFieldStrategy].
@@ -64,23 +52,3 @@ enum class ExcludedFieldStrategy {
     NULLABLE_OVERRIDE
 }
 
-/** ORM relationship types supported by [Relation.type]. */
-enum class RelationType {
-    /** No relationship; the field is a plain column (default). */
-    NONE,
-    ONE_TO_ONE,
-    ONE_TO_MANY,
-    MANY_TO_ONE,
-    MANY_TO_MANY
-}
-
-/** JPA/ORM cascade operation types used in [Relation.cascade]. */
-enum class CascadeType { ALL, PERSIST, MERGE, REMOVE, REFRESH }
-
-/** ORM fetch strategy used in [Relation.fetch]. */
-enum class FetchType {
-    /** Load the association on demand (default). */
-    LAZY,
-    /** Load the association immediately with the parent. */
-    EAGER
-}

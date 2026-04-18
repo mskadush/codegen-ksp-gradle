@@ -33,13 +33,15 @@ annotation class RequestSpec(val for_: KClass<*>)
  * @param suffix Appended to the domain class name to form the create-request class name (default: `"CreateRequest"`).
  * @param validator A [RequestValidator] subclass invoked after the object is constructed.
  * @param fields Per-field configuration; fields not listed here are included with no rules.
+ * @param annotations Extra annotations to forward to the generated create-request class.
  */
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.SOURCE)
 annotation class CreateSpec(
     val suffix: String = "CreateRequest",
     val validator: KClass<out RequestValidator<*>> = NoOpValidator::class,
-    val fields: Array<CreateField> = []
+    val fields: Array<CreateField> = [],
+    val annotations: Array<DbAnnotation> = []
 )
 
 /**
@@ -52,6 +54,7 @@ annotation class CreateSpec(
  * @param partial When `true`, every field in the generated class is nullable (default: `true`).
  * @param validator A [RequestValidator] subclass invoked after the object is constructed.
  * @param fields Per-field configuration; fields not listed here are included with no rules.
+ * @param annotations Extra annotations to forward to the generated update-request class.
  */
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.SOURCE)
@@ -59,7 +62,8 @@ annotation class UpdateSpec(
     val suffix: String = "UpdateRequest",
     val partial: Boolean = true,
     val validator: KClass<out RequestValidator<*>> = NoOpValidator::class,
-    val fields: Array<UpdateField> = []
+    val fields: Array<UpdateField> = [],
+    val annotations: Array<DbAnnotation> = []
 )
 
 /**
@@ -71,13 +75,15 @@ annotation class UpdateSpec(
  * @param minLength When ≥ 0, emits `require(field.length >= minLength)` in the generated `init {}`.
  * @param maxLength When ≥ 0, emits `require(field.length <= maxLength)` in the generated `init {}`.
  * @param exclude When `true`, the field is omitted from the generated create-request class.
+ * @param annotations Extra annotations to forward to the generated field (e.g. validation framework annotations).
  */
 annotation class CreateField(
     val property: String,
     val rules: Array<kotlin.reflect.KClass<out Annotation>> = [],
     val minLength: Int = -1,
     val maxLength: Int = -1,
-    val exclude: Boolean = false
+    val exclude: Boolean = false,
+    val annotations: Array<DbAnnotation> = []
 )
 
 /**
@@ -89,11 +95,13 @@ annotation class CreateField(
  * @param minLength When ≥ 0, emits `require(field.length >= minLength)` in the generated `init {}`.
  * @param maxLength When ≥ 0, emits `require(field.length <= maxLength)` in the generated `init {}`.
  * @param exclude When `true`, the field is omitted from the generated update-request class.
+ * @param annotations Extra annotations to forward to the generated field.
  */
 annotation class UpdateField(
     val property: String,
     val rules: Array<kotlin.reflect.KClass<out Annotation>> = [],
     val minLength: Int = -1,
     val maxLength: Int = -1,
-    val exclude: Boolean = false
+    val exclude: Boolean = false,
+    val annotations: Array<DbAnnotation> = []
 )

@@ -3,7 +3,6 @@ import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
-import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
@@ -19,9 +18,9 @@ import com.squareup.kotlinpoet.ksp.writeTo
  *
  * The generated class is named `<DomainClass>Entity` and mirrors the primary constructor of
  * the domain class referenced by `@EntitySpec.for_`. Field-level overrides from `@EntityField`
- * on the spec are applied: excluded fields are omitted, column renames produce `@Column(name)`
- * annotations, and `NullableOverride` adjusts Kotlin nullability. The class-level
- * `@Table(name, schema)` is emitted when `EntitySpec.table` is non-blank.
+ * on the spec are applied: excluded fields are omitted and `NullableOverride` adjusts Kotlin
+ * nullability. Class-level and field-level annotations are forwarded verbatim via [DbAnnotation]
+ * passthrough — the processor has no knowledge of specific frameworks.
  *
  * Nested domain class fields are substituted with their generated entity type (e.g.
  * `address: Address` becomes `address: AddressEntity`) when the nested type has its own spec.
@@ -42,8 +41,6 @@ class EntityGenerator(
         val domainName = domainClass.simpleName.asString()
         val entityName = "${domainName}Entity"
 
-        val tableArg  = annotation.arguments.firstOrNull { it.name?.asString() == "table"  }?.value as? String ?: ""
-        val schemaArg = annotation.arguments.firstOrNull { it.name?.asString() == "schema" }?.value as? String ?: ""
         val unmappedStrategy = annotation.argEnumName("unmappedNestedStrategy").let {
             if (it == "UNSET") "FAIL" else it
         }
@@ -54,18 +51,10 @@ class EntityGenerator(
 
         val fields = classResolver.resolveWithKinds(domainClass, unmappedStrategy, overrideMap) ?: return
 
-        // @Table on class
-        val tableAnnotation = AnnotationSpec.builder(ClassName("jakarta.persistence", "Table")).apply {
-            if (tableArg.isNotBlank()) addMember("name = %S", tableArg)
-            if (schemaArg.isNotBlank()) addMember("schema = %S", schemaArg)
-        }.build()
-
         val ctorBuilder = FunSpec.constructorBuilder()
-        val classBuilder = TypeSpec.classBuilder(entityName)
-            .addModifiers(KModifier.DATA)
-            .addAnnotation(tableAnnotation)
+        val classBuilder = TypeSpec.classBuilder(entityName).addModifiers(KModifier.DATA)
+        annotation.dbAnnotationSpecs().forEach { classBuilder.addAnnotation(it) }
 
-        val columnClassName = ClassName("jakarta.persistence", "Column")
         var emittedCount = 0
         for (field in fields) {
             val override = overrideMap[field.originalName]
@@ -91,12 +80,7 @@ class EntityGenerator(
 
             val propBuilder = PropertySpec.builder(field.originalName, finalType)
                 .initializer(field.originalName)
-            val col = override?.argString("column") ?: ""
-            if (col.isNotBlank()) {
-                propBuilder.addAnnotation(
-                    AnnotationSpec.builder(columnClassName).addMember("name = %S", col).build()
-                )
-            }
+            override?.dbAnnotationSpecs()?.forEach { propBuilder.addAnnotation(it) }
             classBuilder.addProperty(propBuilder.build())
             emittedCount++
         }

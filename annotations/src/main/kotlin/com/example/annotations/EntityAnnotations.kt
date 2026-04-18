@@ -23,8 +23,7 @@ import kotlin.reflect.KClass
  * @param bundles Names of [EntityBundle] classes whose field configs are merged into this spec.
  * @param bundleMergeStrategy How to resolve conflicts between this spec's [EntityField]s and bundle fields.
  * @param unmappedNestedStrategy What to do when a nested domain type has no explicit field mapping.
- * @param missingRelationStrategy What to do when a field looks like a relation but has no [Relation] config.
- * @param annotations Extra annotations to emit on the generated entity class (e.g. `@Table`).
+ * @param annotations Annotations to forward to the generated entity class (e.g. `@Table`, `@Entity`). The processor emits these verbatim without any framework knowledge.
  * @param indexes Database indexes to create on the generated entity's table.
  */
 @Target(AnnotationTarget.CLASS)
@@ -36,7 +35,6 @@ annotation class EntitySpec(
     val bundles: Array<String> = [],
     val bundleMergeStrategy: BundleMergeStrategy = BundleMergeStrategy.SPEC_WINS,
     val unmappedNestedStrategy: UnmappedNestedStrategy = UnmappedNestedStrategy.FAIL,
-    val missingRelationStrategy: MissingRelationStrategy = MissingRelationStrategy.FAIL,
     val annotations: Array<DbAnnotation> = [],
     val indexes: Array<Index> = []
 )
@@ -53,8 +51,7 @@ annotation class EntitySpec(
  * @param nullable Overrides the field's nullability; [NullableOverride.UNSET] preserves the source type.
  * @param transformer Class-reference to a [FieldTransformer] for value conversion.
  * @param transformerRef Name of a transformer registered via [RegisterTransformer]; takes precedence over [transformer].
- * @param relation ORM relationship configuration for association fields.
- * @param annotations Extra annotations to emit on the generated field (e.g. `@Column`, `@JoinColumn`).
+ * @param annotations Annotations to forward to the generated field (e.g. `@Column`, `@OneToMany`). Replaces the former `relation` parameter.
  * @param inline When `true`, flattens a nested domain object's fields into this entity.
  * @param inlinePrefix Prefix prepended to inlined field names to avoid collisions.
  */
@@ -68,7 +65,6 @@ annotation class EntityField(
     val nullable: NullableOverride = NullableOverride.UNSET,
     val transformer: KClass<out FieldTransformer<*, *>> = NoOpTransformer::class,
     val transformerRef: String = "",
-    val relation: Relation = Relation(RelationType.NONE),
     val annotations: Array<DbAnnotation> = [],
     val inline: Boolean = false,
     val inlinePrefix: String = ""

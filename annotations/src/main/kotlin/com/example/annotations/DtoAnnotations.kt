@@ -23,6 +23,7 @@ import kotlin.reflect.KClass
  * @param bundleMergeStrategy How to resolve conflicts between this spec's [DtoField]s and bundle fields.
  * @param unmappedNestedStrategy What to do when a nested domain type has no explicit field mapping.
  * @param excludedFieldStrategy How to treat fields that are excluded from the DTO.
+ * @param annotations Extra annotations to forward to the generated DTO class (e.g. Jackson's `@JsonInclude`).
  */
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.SOURCE)
@@ -33,7 +34,8 @@ annotation class DtoSpec(
     val bundles: Array<String> = [],
     val bundleMergeStrategy: BundleMergeStrategy = BundleMergeStrategy.SPEC_WINS,
     val unmappedNestedStrategy: UnmappedNestedStrategy = UnmappedNestedStrategy.FAIL,
-    val excludedFieldStrategy: ExcludedFieldStrategy = ExcludedFieldStrategy.USE_DEFAULT
+    val excludedFieldStrategy: ExcludedFieldStrategy = ExcludedFieldStrategy.USE_DEFAULT,
+    val annotations: Array<DbAnnotation> = []
 )
 
 /**
@@ -48,6 +50,7 @@ annotation class DtoSpec(
  * @param nullable Overrides the field's nullability; [NullableOverride.UNSET] preserves the source type.
  * @param transformer Class-reference to a [FieldTransformer] for value conversion.
  * @param transformerRef Name of a transformer registered via [RegisterTransformer]; takes precedence over [transformer].
+ * @param annotations Extra annotations to forward to the generated field (e.g. `@JsonProperty`, `@JsonIgnore`).
  */
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.SOURCE)
@@ -58,5 +61,6 @@ annotation class DtoField(
     val exclude: Boolean = false,
     val nullable: NullableOverride = NullableOverride.UNSET,
     val transformer: KClass<out FieldTransformer<*, *>> = NoOpTransformer::class,
-    val transformerRef: String = ""
+    val transformerRef: String = "",
+    val annotations: Array<DbAnnotation> = []
 )

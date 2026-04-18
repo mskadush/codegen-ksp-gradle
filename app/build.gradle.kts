@@ -17,4 +17,6 @@ dependencies {
     implementation(project(":runtime"))
     ksp(project(":processor"))
     compileOnly("jakarta.persistence:jakarta.persistence-api:3.1.0")
+    compileOnly("com.fasterxml.jackson.core:jackson-annotations:2.17.0")
+    compileOnly("jakarta.validation:jakarta.validation-api:3.1.0")
 }

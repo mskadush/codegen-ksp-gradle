@@ -16,7 +16,8 @@ import com.squareup.kotlinpoet.ksp.writeTo
  * The generated class is named `<prefix><DomainClass><suffix>` and mirrors the primary constructor
  * of the domain class referenced by `@DtoSpec.for_`. Field-level overrides from `@DtoField` on
  * the spec are applied: excluded fields are omitted, renamed fields use the new name in the
- * generated class, and `NullableOverride` adjusts Kotlin nullability.
+ * generated class, and `NullableOverride` adjusts Kotlin nullability. Class-level and field-level
+ * annotations are forwarded verbatim via [DbAnnotation] passthrough.
  *
  * @param codeGenerator KSP code generation API used to write output files.
  * @param logger KSP logger for compile-time diagnostics.
@@ -51,6 +52,7 @@ class DtoGenerator(
         val ctorBuilder = FunSpec.constructorBuilder()
         val classBuilder = TypeSpec.classBuilder(dtoName)
             .addModifiers(KModifier.DATA)
+        annotation.dbAnnotationSpecs().forEach { classBuilder.addAnnotation(it) }
 
         var emittedCount = 0
         for (field in fields) {
@@ -68,11 +70,11 @@ class DtoGenerator(
             val fieldName = if (rename.isNotBlank()) rename else field.originalName
 
             ctorBuilder.addParameter(fieldName, finalType)
-            classBuilder.addProperty(
-                PropertySpec.builder(fieldName, finalType)
-                    .initializer(fieldName)
-                    .build()
-            )
+            val propSpec = PropertySpec.builder(fieldName, finalType)
+                .initializer(fieldName)
+                .apply { override?.dbAnnotationSpecs()?.forEach { addAnnotation(it) } }
+                .build()
+            classBuilder.addProperty(propSpec)
             emittedCount++
         }
         classBuilder.primaryConstructor(ctorBuilder.build())

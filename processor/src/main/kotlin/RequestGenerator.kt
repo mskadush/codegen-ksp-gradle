@@ -61,6 +61,7 @@ class RequestGenerator(
 
         val ctorBuilder = FunSpec.constructorBuilder()
         val classBuilder = TypeSpec.classBuilder(requestName).addModifiers(KModifier.DATA)
+        createSpec.dbAnnotationSpecs().forEach { classBuilder.addAnnotation(it) }
         val requireStatements = mutableListOf<String>()
 
         for (field in fields) {
@@ -68,11 +69,11 @@ class RequestGenerator(
             if (override?.argBool("exclude") == true) continue
 
             ctorBuilder.addParameter(field.originalName, field.resolvedType)
-            classBuilder.addProperty(
-                PropertySpec.builder(field.originalName, field.resolvedType)
-                    .initializer(field.originalName)
-                    .build()
-            )
+            val propSpec = PropertySpec.builder(field.originalName, field.resolvedType)
+                .initializer(field.originalName)
+                .apply { override?.dbAnnotationSpecs()?.forEach { addAnnotation(it) } }
+                .build()
+            classBuilder.addProperty(propSpec)
 
             if (override != null) {
                 requireStatements += buildRequireStatements(field.originalName, override)
@@ -110,6 +111,7 @@ class RequestGenerator(
 
         val ctorBuilder = FunSpec.constructorBuilder()
         val classBuilder = TypeSpec.classBuilder(requestName).addModifiers(KModifier.DATA)
+        updateSpec.dbAnnotationSpecs().forEach { classBuilder.addAnnotation(it) }
         val initBlock = CodeBlock.builder()
         var hasValidation = false
 
@@ -123,11 +125,11 @@ class RequestGenerator(
                     .defaultValue("null")
                     .build()
                 ctorBuilder.addParameter(param)
-                classBuilder.addProperty(
-                    PropertySpec.builder(field.originalName, nullableType)
-                        .initializer(field.originalName)
-                        .build()
-                )
+                val partialPropSpec = PropertySpec.builder(field.originalName, nullableType)
+                    .initializer(field.originalName)
+                    .apply { override?.dbAnnotationSpecs()?.forEach { addAnnotation(it) } }
+                    .build()
+                classBuilder.addProperty(partialPropSpec)
 
                 if (override != null) {
                     val stmts = buildRequireStatements(field.originalName, override)
@@ -140,11 +142,11 @@ class RequestGenerator(
                 }
             } else {
                 ctorBuilder.addParameter(field.originalName, field.resolvedType)
-                classBuilder.addProperty(
-                    PropertySpec.builder(field.originalName, field.resolvedType)
-                        .initializer(field.originalName)
-                        .build()
-                )
+                val nonPartialPropSpec = PropertySpec.builder(field.originalName, field.resolvedType)
+                    .initializer(field.originalName)
+                    .apply { override?.dbAnnotationSpecs()?.forEach { addAnnotation(it) } }
+                    .build()
+                classBuilder.addProperty(nonPartialPropSpec)
 
                 if (override != null) {
                     val stmts = buildRequireStatements(field.originalName, override)

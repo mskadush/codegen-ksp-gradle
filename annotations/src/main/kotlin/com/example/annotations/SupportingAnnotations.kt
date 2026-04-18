@@ -1,16 +1,18 @@
 package com.example.annotations
 
+import kotlin.reflect.KClass
+
 /**
  * Represents an arbitrary annotation to be emitted on a generated class or field.
  *
  * Use this when you need the code generator to attach framework-specific annotations
  * (e.g. JPA, Jackson) that are not natively modelled by the DSL.
  *
- * @param fqn Fully-qualified name of the annotation class (e.g. `"jakarta.persistence.Table"`).
+ * @param annotation The annotation class to emit (e.g. `jakarta.persistence.Table::class`).
  * @param members Key-value pairs for the annotation's parameters.
  */
 annotation class DbAnnotation(
-    val fqn: String,
+    val annotation: KClass<out Annotation>,
     val members: Array<AnnotationMember> = []
 )
 
@@ -38,28 +40,6 @@ annotation class Index(
     val columns: Array<String>,
     val unique: Boolean = false,
     val name: String = ""
-)
-
-/**
- * Configures the ORM relationship for a field in a generated entity.
- *
- * Referenced from [EntityField.relation]. When [type] is [RelationType.NONE] (the default),
- * the field is treated as a plain column and all other parameters are ignored.
- *
- * @param type The relationship cardinality.
- * @param mappedBy The name of the field in the related entity that owns the relationship.
- * @param cascade Cascade operations to propagate to the related entity.
- * @param fetch Whether to load the association eagerly or lazily (default: [FetchType.LAZY]).
- * @param joinColumn Name of the foreign-key column for `@OneToOne` / `@ManyToOne`.
- * @param joinTable Name of the join table for `@ManyToMany`.
- */
-annotation class Relation(
-    val type: RelationType,
-    val mappedBy: String = "",
-    val cascade: Array<CascadeType> = [],
-    val fetch: FetchType = FetchType.LAZY,
-    val joinColumn: String = "",
-    val joinTable: String = ""
 )
 
 /**

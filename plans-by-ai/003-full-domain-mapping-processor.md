@@ -203,33 +203,31 @@ First KotlinPoet output. `EntityGenerator` emits a bare `data class UserEntity()
 
 ---
 
-### Step 11 — Relation annotations (`@OneToOne`, `@JoinColumn`, etc.)
+### Step 11 — Type-safe `DbAnnotation` passthrough (replaces relation + fqn-string approach)
 
-- [ ] Emit JPA/Hibernate relation annotations from `Relation` spec on entity fields:
-  - `@OneToOne`, `@OneToMany`, `@ManyToOne`, `@ManyToMany`
-  - `@JoinColumn(name)` from `joinColumn`
-  - `@JoinTable(name)` from `joinTable`
-  - `cascade`, `fetch`, `mappedBy` attributes
-- [ ] Add a `Relation` on an `@EntityField` in `UserEntitySpec`
+**Decision:** Replaced `DbAnnotation(fqn: String)` with `DbAnnotation(annotation: KClass<out Annotation>)`
+and removed the separate `Relation` annotation. All JPA/framework annotations (including
+`@OneToMany`, `@JoinColumn`, `@Table`, `@Column`, etc.) are now forwarded via the type-safe
+`DbAnnotation(annotation = SomeClass::class, members = [...])` pattern. The processor reads the
+`KSType` from the `annotation` argument and derives the package + simple name for `ClassName`.
 
-**Verify:**
-```bash
-./gradlew :app:kspKotlin
-# @OneToMany(cascade=[...], fetch=LAZY) present on the relational field in UserEntity.kt
-```
-
----
-
-### Step 12 — `DbAnnotation` + `Index` class-level generation
-
-- [ ] Emit arbitrary class-level annotations from `annotations = [DbAnnotation(fqn, members)]`
-- [ ] Emit `@Table(indexes = [Index(columns=[...], unique, name)])` from `indexes` in `EntitySpec`
-- [ ] Add `DbAnnotation` + `Index` entries to `UserEntitySpec` in `app/`
+- [x] Change `DbAnnotation.fqn: String` → `DbAnnotation.annotation: KClass<out Annotation>` in `SupportingAnnotations.kt`
+- [x] Add `import kotlin.reflect.KClass` to `SupportingAnnotations.kt`
+- [x] Update KDoc on `DbAnnotation` (`@param annotation` / `@param members`)
+- [x] Update `KspAnnotationExtensions.kt` — read `KSType` from `"annotation"` arg; derive pkg+cls via `ksType.declaration`
+- [x] `EntityGenerator.kt` — already uses `dbAnnotationSpecs()` passthrough; no hardcoded `@Table`/`@Column` to remove
+- [x] `DtoGenerator.kt` — already uses `dbAnnotationSpecs()` passthrough
+- [x] `RequestGenerator.kt` — already uses `dbAnnotationSpecs()` passthrough
+- [x] `UserEntitySpec.kt` — updated to `annotation = jakarta.persistence.Table::class` / `jakarta.persistence.Column::class`
+- [x] `UserDtoSpec.kt` — updated to `annotation = com.fasterxml.jackson.annotation.JsonInclude::class` etc.
+- [x] `UserRequestSpec.kt` — updated to `annotation = jakarta.validation.constraints.NotBlank::class`
 
 **Verify:**
 ```bash
 ./gradlew :app:kspKotlin
-# Custom annotation and @Table(indexes=[...]) present on UserEntity class
+# @jakarta.persistence.Table and @jakarta.persistence.Column present on UserEntity
+# @com.fasterxml.jackson.annotation.JsonInclude present on UserResponse
+# @jakarta.validation.constraints.NotBlank present on UserCreateRequest.name
 ```
 
 ---
