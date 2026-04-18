@@ -19,6 +19,11 @@ import com.squareup.kotlinpoet.ksp.writeTo
  * Excluded fields are omitted from `toEntity()` and receive a zero/null default in `toDomain()`.
  * Fields made nullable via `NullableOverride.YES` use `!!` when mapping back to a non-nullable
  * domain field.
+ *
+ * When a field has `transformer = XClass::class`, the mapper emits `XClass().toTarget(this.field)`
+ * (forward) and `XClass().toDomain(this.field)` (reverse). When `transformerRef = "name"` is set,
+ * it takes precedence and resolves the transformer from [transformerRegistry]. Unknown refs are
+ * reported via [logger.error] (failing the build) and fall back to a direct assignment.
  */
 class MapperGenerator(
     private val codeGenerator: CodeGenerator,
@@ -26,13 +31,18 @@ class MapperGenerator(
     private val classResolver: ClassResolver,
 ) {
 
-    fun generate(spec: KSClassDeclaration) {
+    private companion object {
+        const val NO_OP_TRANSFORMER = "com.example.annotations.NoOpTransformer"
+    }
+
+    fun generate(spec: KSClassDeclaration, transformerRegistry: Map<String, String> = emptyMap()) {
         val annotation = spec.annotations.first { it.shortName.asString() == "EntitySpec" }
         val forArg = annotation.arguments.first { it.name?.asString() == "for_" }
         val domainClass = (forArg.value as KSType).declaration as KSClassDeclaration
         val domainName = domainClass.simpleName.asString()
         val domainPackage = domainClass.packageName.asString()
         val entityName = "${domainName}Entity"
+        val specName = spec.simpleName.asString()
 
         val fields = classResolver.resolve(domainClass) ?: return
 
@@ -47,7 +57,10 @@ class MapperGenerator(
         val includedFields = fields.filter { overrideMap[it.originalName]?.argBool("exclude") != true }
 
         // fun DomainClass.toEntity(): DomainClassEntity
-        val toEntityArgs = includedFields.joinToString(", ") { "${it.originalName} = this.${it.originalName}" }
+        val toEntityArgs = includedFields.joinToString(", ") { field ->
+            val expr = forwardTransformedExpr(field.originalName, overrideMap[field.originalName], specName, transformerRegistry)
+            "${field.originalName} = $expr"
+        }
         val toEntity = FunSpec.builder("toEntity")
             .receiver(domainClassName)
             .returns(entityClassName)
@@ -62,10 +75,11 @@ class MapperGenerator(
             when {
                 override?.argBool("exclude") == true ->
                     "${field.originalName} = ${defaultValueLiteral(field.resolvedType)}"
-                override?.argEnumName("nullable") == "YES" && !field.resolvedType.isNullable ->
-                    "${field.originalName} = this.${field.originalName}!!"
-                else ->
-                    "${field.originalName} = this.${field.originalName}"
+                else -> {
+                    val baseExpr = reverseTransformedExpr(field.originalName, override, specName, transformerRegistry)
+                    val needsBang = override?.argEnumName("nullable") == "YES" && !field.resolvedType.isNullable
+                    "${field.originalName} = $baseExpr${if (needsBang) "!!" else ""}"
+                }
             }
         }
         val toDomain = FunSpec.builder("toDomain")
@@ -84,12 +98,13 @@ class MapperGenerator(
         logger.info("MapperGenerator: generated $fileName.kt with toEntity() and toDomain()")
     }
 
-    fun generateDtoMappers(spec: KSClassDeclaration) {
+    fun generateDtoMappers(spec: KSClassDeclaration, transformerRegistry: Map<String, String> = emptyMap()) {
         val annotation = spec.annotations.first { it.shortName.asString() == "DtoSpec" }
         val forArg = annotation.arguments.first { it.name?.asString() == "for_" }
         val domainClass = (forArg.value as KSType).declaration as KSClassDeclaration
         val domainName = domainClass.simpleName.asString()
         val domainPackage = domainClass.packageName.asString()
+        val specName = spec.simpleName.asString()
 
         val suffix = annotation.arguments.firstOrNull { it.name?.asString() == "suffix" }?.value as? String ?: "Dto"
         val prefix = annotation.arguments.firstOrNull { it.name?.asString() == "prefix" }?.value as? String ?: ""
@@ -117,7 +132,10 @@ class MapperGenerator(
         }
 
         // fun DomainClass.toDto(): DtoClass
-        val toDtoArgs = includedFields.joinToString(", ") { "${it.dtoName} = this.${it.originalName}" }
+        val toDtoArgs = includedFields.joinToString(", ") { info ->
+            val expr = forwardTransformedExpr(info.originalName, overrideMap[info.originalName], specName, transformerRegistry)
+            "${info.dtoName} = $expr"
+        }
         val toDto = FunSpec.builder("toDto")
             .receiver(domainClassName)
             .returns(dtoClassName)
@@ -135,12 +153,9 @@ class MapperGenerator(
                 else -> {
                     val rename = override?.argString("rename") ?: ""
                     val dtoFieldName = if (rename.isNotBlank()) rename else field.originalName
-                    val nullable = override?.argEnumName("nullable") ?: "UNSET"
-                    if (nullable == "YES" && !field.resolvedType.isNullable) {
-                        "${field.originalName} = this.$dtoFieldName!!"
-                    } else {
-                        "${field.originalName} = this.$dtoFieldName"
-                    }
+                    val baseExpr = reverseTransformedExprFrom(dtoFieldName, field.originalName, override, specName, transformerRegistry)
+                    val needsBang = override?.argEnumName("nullable") == "YES" && !field.resolvedType.isNullable
+                    "${field.originalName} = $baseExpr${if (needsBang) "!!" else ""}"
                 }
             }
         }
@@ -158,6 +173,73 @@ class MapperGenerator(
             .writeTo(codeGenerator, aggregating = false)
 
         logger.info("MapperGenerator: generated $fileName.kt with toDto() and toDomain()")
+    }
+
+    /** Returns the forward (domain → target) value expression for a field, applying transformer if configured. */
+    private fun forwardTransformedExpr(
+        fieldName: String,
+        override: KSAnnotation?,
+        specName: String,
+        transformerRegistry: Map<String, String>,
+    ): String {
+        val ref = override?.argString("transformerRef") ?: ""
+        val transformerFQN = override?.argKClassFQN("transformer")
+
+        return when {
+            ref.isNotBlank() -> {
+                val registryRef = transformerRegistry[ref]
+                if (registryRef == null) {
+                    logger.error("Unknown transformer '$ref' on $specName.$fieldName")
+                    "this.$fieldName"
+                } else {
+                    "$registryRef.toTarget(this.$fieldName)"
+                }
+            }
+            transformerFQN != null && transformerFQN != NO_OP_TRANSFORMER ->
+                "$transformerFQN().toTarget(this.$fieldName)"
+            else -> "this.$fieldName"
+        }
+    }
+
+    /**
+     * Returns the reverse (target → domain) value expression for an entity field.
+     * The source field name on the receiver is [fieldName] (same property name as domain).
+     */
+    private fun reverseTransformedExpr(
+        fieldName: String,
+        override: KSAnnotation?,
+        specName: String,
+        transformerRegistry: Map<String, String>,
+    ): String = reverseTransformedExprFrom(fieldName, fieldName, override, specName, transformerRegistry)
+
+    /**
+     * Returns the reverse (target → domain) value expression when the receiver field name
+     * ([sourceName]) may differ from the domain field name (e.g. DTO renames).
+     */
+    private fun reverseTransformedExprFrom(
+        sourceName: String,
+        originalName: String,
+        override: KSAnnotation?,
+        specName: String,
+        transformerRegistry: Map<String, String>,
+    ): String {
+        val ref = override?.argString("transformerRef") ?: ""
+        val transformerFQN = override?.argKClassFQN("transformer")
+
+        return when {
+            ref.isNotBlank() -> {
+                val registryRef = transformerRegistry[ref]
+                if (registryRef == null) {
+                    logger.error("Unknown transformer '$ref' on $specName.$originalName")
+                    "this.$sourceName"
+                } else {
+                    "$registryRef.toDomain(this.$sourceName)"
+                }
+            }
+            transformerFQN != null && transformerFQN != NO_OP_TRANSFORMER ->
+                "$transformerFQN().toDomain(this.$sourceName)"
+            else -> "this.$sourceName"
+        }
     }
 
     private fun defaultValueLiteral(type: TypeName): String {
@@ -188,3 +270,7 @@ private fun KSAnnotation.argEnumName(name: String): String {
         else -> raw.toString().substringAfterLast('.')
     }
 }
+
+private fun KSAnnotation.argKClassFQN(name: String): String? =
+    (arguments.firstOrNull { it.name?.asString() == name }?.value as? KSType)
+        ?.declaration?.qualifiedName?.asString()

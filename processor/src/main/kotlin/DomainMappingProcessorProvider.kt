@@ -32,27 +32,31 @@ class DomainMappingProcessorProvider : SymbolProcessorProvider {
         private val dtoGenerator = DtoGenerator(environment.codeGenerator, environment.logger, classResolver)
         private val mapperGenerator = MapperGenerator(environment.codeGenerator, environment.logger, classResolver)
         private val requestGenerator = RequestGenerator(environment.codeGenerator, environment.logger, classResolver)
+        private val transformerRegistryScanner = TransformerRegistryScanner(environment.logger)
 
         /**
          * Processes one compilation round.
          *
-         * Finds all `@EntitySpec`-annotated [KSClassDeclaration]s and asks [EntityGenerator]
+         * First scans all `@TransformerRegistry` objects to build a name→reference map, then
+         * finds all `@EntitySpec`-annotated [KSClassDeclaration]s and asks [EntityGenerator]
          * and [MapperGenerator] to generate the entity class and mapper functions for each one.
          *
          * @return An empty list — all symbols are handled in the current round with no deferral.
          */
         override fun process(resolver: Resolver): List<KSAnnotated> {
+            val transformerRegistry = transformerRegistryScanner.scan(resolver)
+
             resolver.getSymbolsWithAnnotation("com.example.annotations.EntitySpec")
               .filterIsInstance<KSClassDeclaration>()
               .forEach { spec ->
                   entityGenerator.generate(spec)
-                  mapperGenerator.generate(spec)
+                  mapperGenerator.generate(spec, transformerRegistry)
               }
             resolver.getSymbolsWithAnnotation("com.example.annotations.DtoSpec")
               .filterIsInstance<KSClassDeclaration>()
               .forEach { spec ->
                   dtoGenerator.generate(spec)
-                  mapperGenerator.generateDtoMappers(spec)
+                  mapperGenerator.generateDtoMappers(spec, transformerRegistry)
               }
             resolver.getSymbolsWithAnnotation("com.example.annotations.RequestSpec")
               .filterIsInstance<KSClassDeclaration>()

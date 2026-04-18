@@ -170,11 +170,11 @@ First KotlinPoet output. `EntityGenerator` emits a bare `data class UserEntity()
 
 ### Step 9 — `TransformerRegistry` + transformer calls in mappers
 
-- [ ] Scan `@TransformerRegistry` objects; register each `@RegisterTransformer(name)` entry
-- [ ] For `transformer = XClass::class`: emit `XClass().toTarget(this.field)` in mapper body
-- [ ] For `transformerRef = "name"`: resolve against registry → `logger.error(...)` + return if not found
+- [x] Scan `@TransformerRegistry` objects; register each `@RegisterTransformer(name)` entry
+- [x] For `transformer = XClass::class`: emit `XClass().toTarget(this.field)` in mapper body
+- [x] For `transformerRef = "name"`: resolve against registry → `logger.error(...)` + return if not found
   - Error: `Unknown transformer 'name' on UserEntitySpec.field`
-- [ ] Add a sample transformer + registry entry to `app/`
+- [x] Add a sample transformer + registry entry to `app/`
 
 **Verify:**
 ```bash
