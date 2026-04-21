@@ -29,6 +29,7 @@ class RequestGenerator(
     private val logger: KSPLogger,
     private val classResolver: ClassResolver,
 ) {
+    var bundleRegistry: BundleRegistry = BundleRegistry.EMPTY
 
     fun generate(spec: KSClassDeclaration, classSpecAnn: KSAnnotation) {
         val domainClass = (classSpecAnn.arguments.first { it.name?.asString() == "for_" }.value as KSType)
@@ -40,7 +41,9 @@ class RequestGenerator(
         val requestName = "$prefix$domainName$suffix"
 
         val fields   = classResolver.resolve(domainClass) ?: return
-        val overrides = spec.mergedFieldOverrides(suffix)
+        val bundleNames = classSpecAnn.argStringList("bundles")
+        val mergeStrategy = classSpecAnn.argEnumName("bundleMergeStrategy")
+        val overrides = spec.resolveWithBundles(suffix, bundleNames, mergeStrategy, bundleRegistry, logger)
 
         val imports = mutableListOf<Pair<String, String>>()
         val addImport: (String, String) -> Unit = { pkg, name -> imports.add(pkg to name) }

@@ -31,7 +31,7 @@ import kotlin.reflect.KClass
  *                               Also used as the discriminator by [FieldSpec.for_].
  * @param prefix                 Prepended to the domain class name.
  * @param partial                When `true`, every generated field is nullable with `= null`.
- * @param bundles                Names of bundle classes whose field configs are merged into this spec.
+ * @param bundles                Names of [@FieldBundle] classes whose field configs are merged into this spec.
  * @param bundleMergeStrategy    How to resolve conflicts when spec and bundle configure the same field.
  * @param unmappedNestedStrategy What to do when a nested domain type has no explicit mapping.
  * @param excludedFieldStrategy  How to treat excluded fields in the output class.

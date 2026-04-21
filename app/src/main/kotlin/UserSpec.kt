@@ -1,3 +1,4 @@
+import com.example.annotations.BundleMergeStrategy
 import com.example.annotations.ClassField
 import com.example.annotations.ClassSpec
 import com.example.annotations.CustomAnnotation
@@ -13,6 +14,8 @@ import com.example.app.UpperCaseTransformer
 @ClassSpec(
     for_ = User::class,
     suffix = "Entity",
+    bundles = ["timestamps"],
+    bundleMergeStrategy = BundleMergeStrategy.SPEC_WINS,
     annotations = [
         CustomAnnotation(
             annotation = jakarta.persistence.Table::class,
@@ -30,8 +33,8 @@ import com.example.app.UpperCaseTransformer
         )
     ]
 )
-@ClassSpec(for_ = User::class, suffix = "CreateRequest")
-@ClassSpec(for_ = User::class, suffix = "UpdateRequest", partial = true)
+@ClassSpec(for_ = User::class, suffix = "CreateRequest", bundles = ["timestamps"])
+@ClassSpec(for_ = User::class, suffix = "UpdateRequest", partial = true, bundles = ["timestamps"])
 
 // ---- id: nullable in Entity, excluded everywhere else ----
 @FieldSpec(for_ = ["Entity"], property = "id", nullable = NullableOverride.YES)

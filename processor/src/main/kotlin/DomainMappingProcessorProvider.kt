@@ -27,6 +27,9 @@ class DomainMappingProcessorProvider : SymbolProcessorProvider {
         private val mapperGenerator  = MapperGenerator(environment.codeGenerator, logger, classResolver)
         private val requestGenerator = RequestGenerator(environment.codeGenerator, logger, classResolver)
         private val transformerRegistryScanner = TransformerRegistryScanner(logger)
+        // BundleRegistry is cached across rounds: KSP AA may return 0 @FieldBundle symbols in
+        // subsequent rounds (only new-file symbols are visible), so we keep the last non-empty registry.
+        private var cachedBundleRegistry: BundleRegistry = BundleRegistry.EMPTY
 
         override fun process(resolver: Resolver): List<KSAnnotated> {
             val transformerRegistry = transformerRegistryScanner.scan(resolver)
@@ -87,6 +90,18 @@ class DomainMappingProcessorProvider : SymbolProcessorProvider {
                 logger.error("Circular mapping detected: $path. Use exclude = true to break the cycle.")
                 return emptyList()
             }
+
+            // --- PASS 1c: Build BundleRegistry ---
+            // In KSP AA multi-round processing, @FieldBundle symbols are only visible in the
+            // round where they originate. Keep the last non-empty registry for subsequent rounds.
+            val newBundleRegistry = BundleRegistry.build(resolver, logger)
+            if (newBundleRegistry.bundles.isNotEmpty()) {
+                cachedBundleRegistry = newBundleRegistry
+            }
+            entityGenerator.bundleRegistry  = cachedBundleRegistry
+            dtoGenerator.bundleRegistry     = cachedBundleRegistry
+            requestGenerator.bundleRegistry = cachedBundleRegistry
+            mapperGenerator.bundleRegistry  = cachedBundleRegistry
 
             // --- PASS 2: Generate ---
             classResolver.registry = specRegistry

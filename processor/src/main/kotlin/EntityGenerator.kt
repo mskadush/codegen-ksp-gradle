@@ -26,6 +26,8 @@ class EntityGenerator(
     private val logger: KSPLogger,
     private val classResolver: ClassResolver,
 ) {
+    var bundleRegistry: BundleRegistry = BundleRegistry.EMPTY
+
     fun generate(spec: KSClassDeclaration, classSpecAnn: KSAnnotation) {
         val domainClass = (classSpecAnn.arguments.first { it.name?.asString() == "for_" }.value as KSType)
             .declaration as KSClassDeclaration
@@ -37,7 +39,9 @@ class EntityGenerator(
         val unmappedStrategy = classSpecAnn.argEnumName("unmappedNestedStrategy")
             .let { if (it == "UNSET") "FAIL" else it }
 
-        val overrides = spec.mergedFieldOverrides(suffix)
+        val bundleNames = classSpecAnn.argStringList("bundles")
+        val mergeStrategy = classSpecAnn.argEnumName("bundleMergeStrategy")
+        val overrides = spec.resolveWithBundles(suffix, bundleNames, mergeStrategy, bundleRegistry, logger)
         val fields = classResolver.resolveWithKinds(domainClass, unmappedStrategy, overrides) ?: return
 
         val imports = mutableListOf<Pair<String, String>>()

@@ -1,3 +1,4 @@
+import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSClassDeclaration
@@ -80,6 +81,95 @@ internal fun KSClassDeclaration.mergedFieldOverrides(suffix: String): Map<String
             inlinePrefix  = fs?.argString("inlinePrefix") ?: "",
             rename        = fs?.argString("rename") ?: "",
             rules         = fs?.argKClassList("rules") ?: emptyList(),
+        )
+    }
+}
+
+// ---------------------------------------------------------------------------
+// resolveWithBundles — merge spec field overrides with bundle field overrides
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds the merged override map for [suffix], combining the spec class's own
+ * [mergedFieldOverrides] with any [@FieldBundle] classes listed in [bundleNames].
+ *
+ * Merge precedence is controlled by [mergeStrategy] ("SPEC_WINS", "BUNDLE_WINS", "MERGE_ADDITIVE").
+ * Within the bundle layer, first-bundle-wins when multiple bundles define the same property.
+ */
+internal fun KSClassDeclaration.resolveWithBundles(
+    suffix: String,
+    bundleNames: List<String>,
+    mergeStrategy: String,
+    bundleRegistry: BundleRegistry,
+    logger: KSPLogger,
+): Map<String, MergedOverride> {
+    val specOverrides = mergedFieldOverrides(suffix)
+    if (bundleNames.isEmpty()) return specOverrides
+
+    // Build the bundle layer: first-bundle-wins for each property
+    val bundleLayer = mutableMapOf<String, MergedOverride>()
+    for (bundleName in bundleNames) {
+        val bundleDecl = bundleRegistry.bundles[bundleName]
+        if (bundleDecl == null) {
+            logger.error(
+                "Unknown bundle '$bundleName' referenced in @ClassSpec(suffix=\"$suffix\") on " +
+                    "${simpleName.asString()}. Declare a class annotated with @FieldBundle(\"$bundleName\")."
+            )
+            continue
+        }
+        val bundleOverrides = bundleDecl.mergedFieldOverrides(suffix)
+        for ((prop, override) in bundleOverrides) {
+            bundleLayer.putIfAbsent(prop, override)
+        }
+    }
+
+    if (bundleLayer.isEmpty()) return specOverrides
+
+    return when (mergeStrategy) {
+        "BUNDLE_WINS" -> {
+            val merged = bundleLayer.toMutableMap()
+            for ((prop, override) in specOverrides) merged.putIfAbsent(prop, override)
+            merged
+        }
+        "MERGE_ADDITIVE" -> mergeAdditive(specOverrides, bundleLayer)
+        else -> { // SPEC_WINS (default)
+            val merged = specOverrides.toMutableMap()
+            for ((prop, override) in bundleLayer) merged.putIfAbsent(prop, override)
+            merged
+        }
+    }
+}
+
+/**
+ * Merges spec and bundle overrides property-by-property, preferring non-default values from
+ * [spec] and filling remaining defaults from [bundle].
+ *
+ * "Non-default" means: exclude=true, nullable != "UNSET", non-blank transformerRef/transformerFQN,
+ * non-empty annotations, non-blank column/rename, non-empty rules.
+ */
+private fun mergeAdditive(
+    spec: Map<String, MergedOverride>,
+    bundle: Map<String, MergedOverride>,
+): Map<String, MergedOverride> {
+    val allKeys = spec.keys + bundle.keys
+    return allKeys.associateWith { prop ->
+        val s = spec[prop]
+        val b = bundle[prop]
+        if (s == null) return@associateWith b!!
+        if (b == null) return@associateWith s
+        MergedOverride(
+            property       = prop,
+            exclude        = if (s.exclude) s.exclude else b.exclude,
+            nullable       = if (s.nullable != "UNSET") s.nullable else b.nullable,
+            transformerRef = s.transformerRef.ifBlank { b.transformerRef },
+            transformerFQN = s.transformerFQN ?: b.transformerFQN,
+            classLevelAnn  = s.classLevelAnn.ifEmpty { b.classLevelAnn },
+            fieldLevelAnn  = s.fieldLevelAnn.ifEmpty { b.fieldLevelAnn },
+            column         = s.column.ifBlank { b.column },
+            inline         = if (s.inline) s.inline else b.inline,
+            inlinePrefix   = s.inlinePrefix.ifBlank { b.inlinePrefix },
+            rename         = s.rename.ifBlank { b.rename },
+            rules          = s.rules.ifEmpty { b.rules },
         )
     }
 }
@@ -193,3 +283,8 @@ internal fun KSAnnotation.argKClassList(name: String): List<KSType> =
 internal fun KSAnnotation.argAnnotationList(): List<KSAnnotation> =
     (arguments.firstOrNull { it.name?.asString() == "annotations" }?.value as? List<*>)
         ?.filterIsInstance<KSAnnotation>() ?: emptyList()
+
+@Suppress("UNCHECKED_CAST")
+internal fun KSAnnotation.argStringList(name: String): List<String> =
+    (arguments.firstOrNull { it.name?.asString() == name }?.value as? List<*>)
+        ?.filterIsInstance<String>() ?: emptyList()
