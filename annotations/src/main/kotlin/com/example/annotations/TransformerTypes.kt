@@ -29,30 +29,3 @@ class NoOpTransformer : FieldTransformer<Any, Any> {
     override fun toDomain(value: Any) = value
 }
 
-/**
- * Custom validation hook invoked after a request object is constructed.
- *
- * Implement this interface and reference the class via [CreateSpec.validator] or
- * [UpdateSpec.validator] to run cross-field or business-rule validation that cannot
- * be expressed with [Rule] annotations alone.
- *
- * @param T The generated request class being validated.
- */
-interface RequestValidator<T> {
-    /**
-     * Validates [request], throwing an appropriate exception if validation fails.
-     *
-     * @param request The request object to validate.
-     * @param context Caller-supplied context (e.g. authenticated user, tenant).
-     */
-    fun validate(request: T, context: Any)
-}
-
-/**
- * Default [RequestValidator] that performs no validation.
- *
- * Used as the default for [CreateSpec.validator] and [UpdateSpec.validator].
- */
-class NoOpValidator<T> : RequestValidator<T> {
-    override fun validate(request: T, context: Any) = Unit
-}

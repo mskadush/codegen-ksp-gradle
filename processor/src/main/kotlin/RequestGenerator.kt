@@ -3,6 +3,7 @@ import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
+import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
@@ -12,12 +13,22 @@ import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.writeTo
 
+private val VALIDATION_CONTEXT  = ClassName("com.example.runtime", "ValidationContext")
+private val VALIDATION_RESULT   = ClassName("com.example.runtime", "ValidationResult")
+private val FIELD_REF           = ClassName("com.example.runtime", "FieldRef")
+private val VALIDATION_EXCEPTION = ClassName("com.example.runtime", "ValidationException")
+
 /**
  * Generates `data class` request objects from [ClassSpec] instances that contain validation rules.
  *
  * Output-kind is determined by the caller ([DomainMappingProcessorProvider]):
- * - `partial = false` + rules → create-request style (`init {}` with non-null fields)
- * - `partial = true`         → update-request style (all fields nullable + `= null` + `init {}`)
+ * - `partial = false` + rules → create-request style (non-null fields)
+ * - `partial = true`         → update-request style (all fields nullable + `= null`)
+ *
+ * Every generated request class receives:
+ * - `fun validate(): ValidationResult` — collects all rule failures into a structured result.
+ * - `fun validateOrThrow()` — throws [ValidationException] on the first invalid result.
+ * - `init { validateOrThrow() }` (only when `validateOnConstruct = true` on the spec).
  *
  * Validation rules are driven by [@RuleExpression] on each rule annotation class.
  * The placeholder `{field}` is substituted with the actual field name; parameterised rules
@@ -38,6 +49,7 @@ class RequestGenerator(
         val suffix  = classSpecAnn.argString("suffix")
         val prefix  = classSpecAnn.argString("prefix")
         val partial = classSpecAnn.argBool("partial")
+        val validateOnConstruct = classSpecAnn.argBool("validateOnConstruct")
         val requestName = "$prefix$domainName$suffix"
 
         val fields   = classResolver.resolve(domainClass) ?: return
@@ -52,14 +64,14 @@ class RequestGenerator(
         val classBuilder = TypeSpec.classBuilder(requestName).addModifiers(KModifier.DATA)
         classSpecAnn.customAnnotationSpecs(addImport).forEach { classBuilder.addAnnotation(it) }
 
-        val initBlock = CodeBlock.builder()
-        var hasValidation = false
+        // Per-field rule statements collected for validate()
+        val fieldRulesList = mutableListOf<FieldRules>()
 
         for (field in fields) {
             val override = overrides[field.originalName]
             if (override?.exclude == true) continue
 
-            val requireStmts = override?.let { buildRequireStatements(field.originalName, it) }
+            val requireStmts = override?.let { buildEnsureStatements(field.originalName, it) }
                 ?: emptyList()
 
             if (partial) {
@@ -77,13 +89,7 @@ class RequestGenerator(
                     }
                     .build()
                 classBuilder.addProperty(propSpec)
-
-                if (requireStmts.isNotEmpty()) {
-                    initBlock.beginControlFlow("if (%N != null)", field.originalName)
-                    requireStmts.forEach { initBlock.addStatement(it) }
-                    initBlock.endControlFlow()
-                    hasValidation = true
-                }
+                fieldRulesList += FieldRules(field.originalName, isNullable = true, requireStmts)
             } else {
                 ctorBuilder.addParameter(field.originalName, field.resolvedType)
                 val propSpec = PropertySpec.builder(field.originalName, field.resolvedType)
@@ -95,16 +101,28 @@ class RequestGenerator(
                     }
                     .build()
                 classBuilder.addProperty(propSpec)
-
-                if (requireStmts.isNotEmpty()) {
-                    requireStmts.forEach { initBlock.addStatement(it) }
-                    hasValidation = true
-                }
+                fieldRulesList += FieldRules(field.originalName, isNullable = false, requireStmts)
             }
         }
 
         classBuilder.primaryConstructor(ctorBuilder.build())
-        if (hasValidation) classBuilder.addInitializerBlock(initBlock.build())
+
+        val hasValidation = fieldRulesList.any { it.stmts.isNotEmpty() }
+        if (hasValidation) {
+            classBuilder.addFunction(buildValidateFun(fieldRulesList))
+            classBuilder.addFunction(buildValidateOrThrowFun())
+            if (validateOnConstruct) {
+                classBuilder.addInitializerBlock(
+                    CodeBlock.builder().addStatement("validateOrThrow()").build()
+                )
+            }
+
+            // Ensure runtime imports are present
+            imports += "com.example.runtime" to "ValidationContext"
+            imports += "com.example.runtime" to "ValidationResult"
+            imports += "com.example.runtime" to "FieldRef"
+            imports += "com.example.runtime" to "ValidationException"
+        }
 
         val fileBuilder = FileSpec.builder("", requestName)
         imports.forEach { (pkg, name) -> fileBuilder.addImport(pkg, name) }
@@ -112,20 +130,57 @@ class RequestGenerator(
             .build()
             .writeTo(codeGenerator, aggregating = false)
 
-        logger.info("RequestGenerator: generated $requestName (partial=$partial, ${if (hasValidation) "with" else "no"} validation)")
+        logger.info("RequestGenerator: generated $requestName (partial=$partial, validateOnConstruct=$validateOnConstruct, ${if (hasValidation) "with" else "no"} validation)")
     }
 
     // ---------------------------------------------------------------------------
-    // Rule → require() statement generation via @RuleExpression
+    // validate() and validateOrThrow() FunSpec builders
     // ---------------------------------------------------------------------------
 
-    private fun buildRequireStatements(fieldName: String, override: MergedOverride): List<String> {
+    private data class FieldRules(val fieldName: String, val isNullable: Boolean, val stmts: List<String>)
+
+    private fun buildValidateFun(fieldRulesList: List<FieldRules>): FunSpec {
+        val body = CodeBlock.builder()
+        body.addStatement("val ctx = %T()", VALIDATION_CONTEXT)
+        for ((fieldName, isNullable, stmts) in fieldRulesList) {
+            if (stmts.isEmpty()) continue
+            if (isNullable) {
+                body.beginControlFlow("if (%N != null)", fieldName)
+                stmts.forEach { body.addStatement(it) }
+                body.endControlFlow()
+            } else {
+                stmts.forEach { body.addStatement(it) }
+            }
+        }
+        body.addStatement("return ctx.build()")
+        return FunSpec.builder("validate")
+            .returns(VALIDATION_RESULT)
+            .addCode(body.build())
+            .build()
+    }
+
+    private fun buildValidateOrThrowFun(): FunSpec =
+        FunSpec.builder("validateOrThrow")
+            .addCode(
+                CodeBlock.builder()
+                    .addStatement("val result = validate()")
+                    .beginControlFlow("if (result is %T.Invalid)", VALIDATION_RESULT)
+                    .addStatement("throw %T(result.errors)", VALIDATION_EXCEPTION)
+                    .endControlFlow()
+                    .build()
+            )
+            .build()
+
+    // ---------------------------------------------------------------------------
+    // Rule → ensure() statement generation via @RuleExpression
+    // ---------------------------------------------------------------------------
+
+    private fun buildEnsureStatements(fieldName: String, override: MergedOverride): List<String> {
         val statements = mutableListOf<String>()
         for (ruleType in override.rules) {
             val ruleDecl = ruleType.declaration as? KSClassDeclaration ?: continue
             val ruleName = ruleDecl.simpleName.asString()
 
-            // Find @RuleExpression on the rule annotation class
             val exprTemplate = ruleDecl.annotations
                 .firstOrNull { it.shortName.asString() == "RuleExpression" }
                 ?.argString("expression")
@@ -135,15 +190,8 @@ class RequestGenerator(
                 continue
             }
 
-            // Substitute {field} with the actual field name
             var expr = exprTemplate.replace("{field}", fieldName)
 
-            // If the expression still contains {placeholder} tokens, the rule has required
-            // parameters (e.g. Rule.MinLength needs a value). Since rules are referenced as
-            // KClass<*> (not instances), parameter values cannot be inferred at compile time.
-            // Emit a warning and skip — define a custom single-value rule class instead:
-            //   @RuleExpression("{field}.length >= 5")
-            //   annotation class AtLeast5Chars
             val unresolved = Regex("\\{\\w+\\}").find(expr)
             if (unresolved != null) {
                 logger.warn(
@@ -154,7 +202,7 @@ class RequestGenerator(
                 continue
             }
 
-            statements += """require($expr) { "$fieldName failed rule $ruleName" }"""
+            statements += """ctx.ensure($expr, FieldRef("$fieldName"), "$fieldName failed rule $ruleName")"""
         }
         return statements
     }

@@ -270,10 +270,11 @@ and removed the separate `Relation` annotation. All JPA/framework annotations (i
 
 ### Step 15 — `runtime` module: `ValidationContext`, `ValidationResult`, `validate()` wiring
 
-- [ ] Move `FieldTransformer` / `NoOpTransformer` / `RequestValidator` / `NoOpValidator` from `annotations` to `runtime`
-- [ ] Add `ValidationContext` with `require`, `requireAtLeastOne`, `requireAllOrNone`, `requireIf`, `build`
-- [ ] Add `FieldRef`, `ValidationError`, `ValidationResult` (sealed: `Valid`/`Invalid`), `ValidationException`
-- [ ] `RequestGenerator` emits `fun validate(): ValidationResult` and `fun validateOrThrow()` on request classes
+- [x] Move `RequestValidator` / `NoOpValidator` from `annotations` to `runtime` (`FieldTransformer`/`NoOpTransformer` stay — they are annotation defaults)
+- [x] Add `ValidationContext` with `ensure`, `ensureAtLeastOne`, `ensureAllOrNone`, `ensureIf`, `build`
+- [x] Add `FieldRef`, `ValidationError`, `ValidationResult` (sealed `data object Valid` / `data class Invalid`), `ValidationException`
+- [x] Add `validateOnConstruct: Boolean = false` to `ClassSpec` — emits `init { validateOrThrow() }` when true
+- [x] `RequestGenerator` emits `fun validate(): ValidationResult` and `fun validateOrThrow()` on request classes (replaces `init {}` require blocks)
 
 **Verify:**
 ```bash

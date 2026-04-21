@@ -19,7 +19,8 @@
  * The main entrypoint.
  */
 fun main() {
-    val user = User(id = 1L, name = "Alice", email = "alice@example.com")
+    val user = User(id = 1L, name = "Alice", email = "alice@example.com",
+                    createdAt = java.time.Instant.now(), updatedAt = null)
     val entity = user.toEntity()
     println(entity)
     val domainBack = entity.toDomain()
@@ -30,4 +31,7 @@ fun main() {
     println(domainFromDto)
     val createRequest = UserCreateRequest(name = "Alice", email = "alice@example.com")
     println(createRequest)
+    val validResult = createRequest.validate()
+    println(validResult)
+    createRequest.validateOrThrow()   // should not throw for valid input
 }

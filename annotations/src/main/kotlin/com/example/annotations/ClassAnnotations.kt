@@ -36,6 +36,9 @@ import kotlin.reflect.KClass
  * @param unmappedNestedStrategy What to do when a nested domain type has no explicit mapping.
  * @param excludedFieldStrategy  How to treat excluded fields in the output class.
  * @param annotations            Annotations forwarded verbatim to the generated class (e.g. `@Entity`).
+ * @param validateOnConstruct    When `true`, emits an `init { validateOrThrow() }` block so the
+ *                               object is validated immediately on construction. Useful when
+ *                               deserialisation frameworks call the constructor directly.
  */
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.SOURCE)
@@ -49,7 +52,8 @@ annotation class ClassSpec(
     val bundleMergeStrategy: BundleMergeStrategy = BundleMergeStrategy.SPEC_WINS,
     val unmappedNestedStrategy: UnmappedNestedStrategy = UnmappedNestedStrategy.FAIL,
     val excludedFieldStrategy: ExcludedFieldStrategy = ExcludedFieldStrategy.USE_DEFAULT,
-    val annotations: Array<CustomAnnotation> = []
+    val annotations: Array<CustomAnnotation> = [],
+    val validateOnConstruct: Boolean = false,
 )
 
 /**
