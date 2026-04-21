@@ -6,3 +6,8 @@
 - In RequestAnnotations: Consolidate the Specs with the merged DtoSpec + EntitySpec, the Fields w/ the merged DtoField + EntityField. Then for overrides/specs that only apply to some classes, design APIs that will make the overrides ergonomic.
 - The Rules classes in fields should be defined by the consumer and generate `require` statements in the constructor of the generated code.
 - 
+
+- Given that `EntitySpec` only adds annotations, we can use the bundling approach to define it instead of pre-defining it.
+- `CreateSpec`, `UpdateSpec` can have field properties as well as allowing `DtoField` etc.
+- We can also have a `FieldSpec` that has a target `for_` so we don't have to define too many field specs.
+- `CreateSpec`, `UpdateSpec`, `DtoSpec`, `EntitySpec`, etc. can all be collapsed if we allow `ClassSpec` to be repeatable. Then things like suffixes, etc. can live there.
