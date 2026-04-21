@@ -111,10 +111,7 @@ internal fun KSClassDeclaration.resolveWithBundles(
     for (bundleName in bundleNames) {
         val bundleDecl = bundleRegistry.bundles[bundleName]
         if (bundleDecl == null) {
-            logger.error(
-                "Unknown bundle '$bundleName' referenced in @ClassSpec(suffix=\"$suffix\") on " +
-                    "${simpleName.asString()}. Declare a class annotated with @FieldBundle(\"$bundleName\")."
-            )
+            // Error already reported by PASS 1d validatePropertyRefs — skip silently here.
             continue
         }
         val bundleOverrides = bundleDecl.mergedFieldOverrides(suffix)

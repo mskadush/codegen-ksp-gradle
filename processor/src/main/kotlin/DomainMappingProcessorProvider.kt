@@ -1,3 +1,4 @@
+import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessor
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
@@ -103,6 +104,11 @@ class DomainMappingProcessorProvider : SymbolProcessorProvider {
             requestGenerator.bundleRegistry = cachedBundleRegistry
             mapperGenerator.bundleRegistry  = cachedBundleRegistry
 
+            // --- PASS 1d: Validate property references in spec and bundle annotations ---
+            resolver.getSymbolsWithAnnotation("com.example.annotations.ClassSpec")
+                .filterIsInstance<KSClassDeclaration>()
+                .forEach { spec -> spec.validatePropertyRefs(cachedBundleRegistry, logger) }
+
             // --- PASS 2: Generate ---
             classResolver.registry = specRegistry
 
@@ -163,6 +169,63 @@ private fun KSClassDeclaration.classSpecAnnotations(): List<KSAnnotation> {
 private fun KSAnnotation.domainClass(): KSClassDeclaration? =
     (arguments.firstOrNull { it.name?.asString() == "for_" }?.value as? KSType)
         ?.declaration as? KSClassDeclaration
+
+/**
+ * Validates that every `property` value in [@ClassField] and [@FieldSpec] annotations on this
+ * spec references an actual primary constructor parameter of the domain class, and that every
+ * bundle name in [@ClassSpec.bundles] exists in [bundleRegistry].
+ */
+private fun KSClassDeclaration.validatePropertyRefs(
+    bundleRegistry: BundleRegistry,
+    logger: KSPLogger,
+) {
+    val specName = simpleName.asString()
+
+    // Collect domain property names from all @ClassSpec annotations on this spec
+    val domainProps = mutableSetOf<String>()
+    var primaryDomainName = ""
+    classSpecAnnotations().forEach { csAnn ->
+        val domainClass = csAnn.domainClass() ?: return@forEach
+        if (primaryDomainName.isEmpty()) primaryDomainName = domainClass.simpleName.asString()
+        domainClass.primaryConstructor?.parameters
+            ?.mapNotNull { it.name?.asString() }
+            ?.let { domainProps.addAll(it) }
+    }
+    if (domainProps.isEmpty()) return
+
+    // Validate @ClassField and @FieldSpec property references on the spec itself
+    annotations
+        .filter { it.shortName.asString() in setOf("ClassField", "FieldSpec") }
+        .forEach { ann ->
+            val property = ann.argString("property")
+            if (property.isNotBlank() && property !in domainProps) {
+                logger.error("Unknown property '$property' on $primaryDomainName in $specName")
+            }
+        }
+
+    // Validate bundle names and bundle property references
+    classSpecAnnotations().forEach { csAnn ->
+        val domainClass = csAnn.domainClass() ?: return@forEach
+        val domainName = domainClass.simpleName.asString()
+        val localDomainProps = domainClass.primaryConstructor?.parameters
+            ?.mapNotNull { it.name?.asString() }?.toSet() ?: return@forEach
+
+        csAnn.argStringList("bundles").forEach { bundleName ->
+            val bundleDecl = bundleRegistry.bundles[bundleName] ?: run {
+                logger.error("Unknown bundle '$bundleName' on $specName")
+                return@forEach
+            }
+            bundleDecl.annotations
+                .filter { it.shortName.asString() in setOf("ClassField", "FieldSpec") }
+                .forEach { ann ->
+                    val property = ann.argString("property")
+                    if (property.isNotBlank() && property !in localDomainProps) {
+                        logger.error("Unknown property '$property' on $domainName in $specName")
+                    }
+                }
+        }
+    }
+}
 
 /** Returns true if any @FieldSpec on this declaration targeting [suffix] has non-empty rules. */
 @Suppress("UNCHECKED_CAST")

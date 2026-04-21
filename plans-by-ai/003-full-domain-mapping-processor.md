@@ -234,14 +234,14 @@ and removed the separate `Relation` annotation. All JPA/framework annotations (i
 
 ### Step 13 — `SpecRegistry` + `BundleRegistry` + bundle resolution
 
-- [ ] `SpecRegistry`: register all `@EntitySpec`, `@DtoSpec`, `@RequestSpec` by canonical name
-- [ ] `BundleRegistry`: register all `@EntityBundle`, `@DtoBundle`, `@RequestBundle`
-- [ ] Flatten `bundles = [...]` from specs against `BundleRegistry`
-- [ ] Apply `BundleMergeStrategy` (SPEC_WINS / BUNDLE_WINS / MERGE_ADDITIVE)
-- [ ] Validate all property references in bundle field overrides exist on domain class
+- [x] `SpecRegistry`: register all `@EntitySpec`, `@DtoSpec`, `@RequestSpec` by canonical name
+- [x] `BundleRegistry`: register all `@EntityBundle`, `@DtoBundle`, `@RequestBundle`
+- [x] Flatten `bundles = [...]` from specs against `BundleRegistry`
+- [x] Apply `BundleMergeStrategy` (SPEC_WINS / BUNDLE_WINS / MERGE_ADDITIVE)
+- [x] Validate all property references in bundle field overrides exist on domain class
   - Error: `Unknown property 'naem' on User in UserEntitySpec`
-  - Error: `Unknown entity bundle 'Foo' on UserEntitySpec`
-- [ ] Add an `EntityBundle` + reference it from `UserEntitySpec` in `app/`
+  - Error: `Unknown bundle 'Foo' on UserEntitySpec`
+- [x] Add `UserEntityBundle` (`@FieldBundle("userEntity")`) + reference it from `UserSpec` in `app/` (MERGE_ADDITIVE; emits `@Id`/`@GeneratedValue` on `id`)
 
 **Verify:**
 ```bash

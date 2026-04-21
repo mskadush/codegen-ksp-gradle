@@ -14,8 +14,8 @@ import com.example.app.UpperCaseTransformer
 @ClassSpec(
     for_ = User::class,
     suffix = "Entity",
-    bundles = ["timestamps"],
-    bundleMergeStrategy = BundleMergeStrategy.SPEC_WINS,
+    bundles = ["timestamps", "userEntity"],
+    bundleMergeStrategy = BundleMergeStrategy.MERGE_ADDITIVE,
     annotations = [
         CustomAnnotation(
             annotation = jakarta.persistence.Table::class,
