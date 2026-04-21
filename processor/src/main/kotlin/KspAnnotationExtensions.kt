@@ -106,9 +106,10 @@ internal fun KSClassDeclaration.resolveWithBundles(
     val specOverrides = mergedFieldOverrides(suffix)
     if (bundleNames.isEmpty()) return specOverrides
 
-    // Build the bundle layer: first-bundle-wins for each property
+    // Build the bundle layer: first-bundle-wins for each property.
+    // Expand bundle names transitively (DFS pre-order) before iterating.
     val bundleLayer = mutableMapOf<String, MergedOverride>()
-    for (bundleName in bundleNames) {
+    for (bundleName in bundleRegistry.transitiveBundleNamesFor(bundleNames)) {
         val bundleDecl = bundleRegistry.bundles[bundleName]
         if (bundleDecl == null) {
             // Error already reported by PASS 1d validatePropertyRefs — skip silently here.

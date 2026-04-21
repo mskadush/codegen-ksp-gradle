@@ -254,9 +254,9 @@ and removed the separate `Relation` annotation. All JPA/framework annotations (i
 
 ### Step 14 — `IncludeBundles` transitive resolution
 
-- [ ] Resolve transitive `IncludeBundles` inclusions DFS-order
-- [ ] Apply merge strategy at each level
-- [ ] DFS cycle detection on bundle inclusion graph
+- [x] Resolve transitive `IncludeBundles` inclusions DFS-order
+- [x] Apply merge strategy at each level
+- [x] DFS cycle detection on bundle inclusion graph
   - Error: `Circular bundle dependency detected: A -> B -> A`
 
 **Verify:**
