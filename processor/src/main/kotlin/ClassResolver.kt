@@ -1,5 +1,4 @@
 import com.google.devtools.ksp.processing.KSPLogger
-import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.Modifier
@@ -67,7 +66,7 @@ class ClassResolver(private val logger: KSPLogger) {
     fun resolveWithKinds(
         cls: KSClassDeclaration,
         unmappedNestedStrategy: String,
-        inlineOverrides: Map<String, KSAnnotation> = emptyMap(),
+        overrides: Map<String, MergedOverride> = emptyMap(),
     ): List<FieldModel>? {
         val baseFields = resolve(cls) ?: return null
         val result = mutableListOf<FieldModel>()
@@ -81,7 +80,7 @@ class ClassResolver(private val logger: KSPLogger) {
                         isNonPrimitiveUnmapped(field) -> {
                     // INLINE: flatten nested class fields into parent
                     val nestedCls = field.originalType.declaration as? KSClassDeclaration ?: continue
-                    val prefix = inlineOverrides[field.originalName]?.argString("inlinePrefix")
+                    val prefix = overrides[field.originalName]?.inlinePrefix
                         ?.takeIf { it.isNotBlank() } ?: field.originalName
                     val nestedFields = resolve(nestedCls) ?: continue
                     for (nf in nestedFields) {
@@ -176,5 +175,3 @@ class ClassResolver(private val logger: KSPLogger) {
     }
 }
 
-private fun KSAnnotation.argString(name: String): String =
-    arguments.firstOrNull { it.name?.asString() == name }?.value as? String ?: ""

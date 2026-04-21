@@ -11,96 +11,67 @@ import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.writeTo
 
 /**
- * Generates a `data class` DTO from a spec class annotated with `@DtoSpec`.
+ * Generates a `data class` DTO from a [ClassSpec] instance (non-partial, no request rules).
  *
- * The generated class is named `<prefix><DomainClass><suffix>` and mirrors the primary constructor
- * of the domain class referenced by `@DtoSpec.for_`. Field-level overrides from `@DtoField` on
- * the spec are applied: excluded fields are omitted, renamed fields use the new name in the
- * generated class, and `NullableOverride` adjusts Kotlin nullability. Class-level and field-level
- * annotations are forwarded verbatim via [DbAnnotation] passthrough.
- *
- * @param codeGenerator KSP code generation API used to write output files.
- * @param logger KSP logger for compile-time diagnostics.
- * @param classResolver Resolves and validates the domain class's fields.
+ * Reads merged field overrides from [ClassField] + [FieldSpec] and applies:
+ * - `exclude = true` → field omitted
+ * - `rename` → alternative name in the generated class
+ * - `nullable` → overrides Kotlin nullability
+ * - `annotations` → forwarded verbatim to the generated field
  */
 class DtoGenerator(
     private val codeGenerator: CodeGenerator,
     private val logger: KSPLogger,
     private val classResolver: ClassResolver,
 ) {
-    /**
-     * Generates a DTO class for the given [spec] class.
-     *
-     * @param spec The `@DtoSpec`-annotated class declaration from the compilation round.
-     */
-    fun generate(spec: KSClassDeclaration) {
-        val annotation = spec.annotations.first { it.shortName.asString() == "DtoSpec" }
-        val forArg = annotation.arguments.first { it.name?.asString() == "for_" }
-        val domainClass = (forArg.value as KSType).declaration as KSClassDeclaration
+    fun generate(spec: KSClassDeclaration, classSpecAnn: KSAnnotation) {
+        val domainClass = (classSpecAnn.arguments.first { it.name?.asString() == "for_" }.value as KSType)
+            .declaration as KSClassDeclaration
         val domainName = domainClass.simpleName.asString()
+        val suffix = classSpecAnn.argString("suffix")
+        val prefix = classSpecAnn.argString("prefix")
+        val outputName = "$prefix$domainName$suffix"
 
-        val suffix = annotation.arguments.firstOrNull { it.name?.asString() == "suffix" }?.value as? String ?: "Dto"
-        val prefix = annotation.arguments.firstOrNull { it.name?.asString() == "prefix" }?.value as? String ?: ""
-        val dtoName = "$prefix${domainName}$suffix"
-
+        val overrides = spec.mergedFieldOverrides(suffix)
         val fields = classResolver.resolve(domainClass) ?: return
 
-        val overrideMap: Map<String, KSAnnotation> = spec.annotations
-            .filter { it.shortName.asString() == "DtoField" }
-            .associateBy { it.argString("property") }
+        val imports = mutableListOf<Pair<String, String>>()
+        val addImport: (String, String) -> Unit = { pkg, name -> imports.add(pkg to name) }
 
         val ctorBuilder = FunSpec.constructorBuilder()
-        val classBuilder = TypeSpec.classBuilder(dtoName)
-            .addModifiers(KModifier.DATA)
-        annotation.dbAnnotationSpecs().forEach { classBuilder.addAnnotation(it) }
+        val classBuilder = TypeSpec.classBuilder(outputName).addModifiers(KModifier.DATA)
+        classSpecAnn.customAnnotationSpecs(addImport).forEach { classBuilder.addAnnotation(it) }
 
         var emittedCount = 0
         for (field in fields) {
-            val override = overrideMap[field.originalName]
+            val override = overrides[field.originalName]
+            if (override?.exclude == true) continue
 
-            if (override?.argBool("exclude") == true) continue
-
-            val finalType = when (override?.argEnumName("nullable") ?: "UNSET") {
+            val finalType = when (override?.nullable ?: "UNSET") {
                 "YES" -> field.resolvedType.copy(nullable = true)
                 "NO"  -> field.resolvedType.copy(nullable = false)
                 else  -> field.resolvedType
             }
 
-            val rename = override?.argString("rename") ?: ""
-            val fieldName = if (rename.isNotBlank()) rename else field.originalName
+            val fieldName = override?.rename?.takeIf { it.isNotBlank() } ?: field.originalName
 
             ctorBuilder.addParameter(fieldName, finalType)
-            val propSpec = PropertySpec.builder(fieldName, finalType)
+            val propBuilder = PropertySpec.builder(fieldName, finalType)
                 .initializer(fieldName)
-                .apply { override?.dbAnnotationSpecs()?.forEach { addAnnotation(it) } }
-                .build()
-            classBuilder.addProperty(propSpec)
+            override?.allAnnotations?.forEach { raw ->
+                raw.toAnnotationSpec(addImport)?.let { propBuilder.addAnnotation(it) }
+            }
+            classBuilder.addProperty(propBuilder.build())
             emittedCount++
         }
         classBuilder.primaryConstructor(ctorBuilder.build())
 
-        FileSpec.builder("", dtoName)
-            .addType(classBuilder.build())
+        val fileBuilder = FileSpec.builder("", outputName)
+        imports.forEach { (pkg, name) -> fileBuilder.addImport(pkg, name) }
+        fileBuilder.addType(classBuilder.build())
             .build()
             .writeTo(codeGenerator, aggregating = false)
 
-        logger.info("DtoGenerator: generated $dtoName with $emittedCount field(s)")
-    }
-}
-
-// --- KSAnnotation helpers ---
-
-private fun KSAnnotation.argString(name: String): String =
-    arguments.firstOrNull { it.name?.asString() == name }?.value as? String ?: ""
-
-private fun KSAnnotation.argBool(name: String): Boolean =
-    arguments.firstOrNull { it.name?.asString() == name }?.value as? Boolean ?: false
-
-private fun KSAnnotation.argEnumName(name: String): String {
-    val raw = arguments.firstOrNull { it.name?.asString() == name }?.value ?: return "UNSET"
-    return when (raw) {
-        is KSType -> raw.declaration.simpleName.asString()
-        is KSClassDeclaration -> raw.simpleName.asString()
-        else -> raw.toString().substringAfterLast('.')
+        logger.info("DtoGenerator: generated $outputName with $emittedCount field(s)")
     }
 }

@@ -3,81 +3,80 @@ import com.google.devtools.ksp.processing.SymbolProcessor
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.processing.SymbolProcessorProvider
 import com.google.devtools.ksp.symbol.KSAnnotated
+import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
-import kotlin.sequences.forEach
 
 /**
  * KSP entry point for the domain-mapping code generator.
  *
- * Registered via `META-INF/services/com.google.devtools.ksp.processing.SymbolProcessorProvider`
- * so that KSP discovers and instantiates it during compilation. Creates a [SymbolProcessor] that
- * scans for spec-annotated classes and delegates generation to the appropriate generators.
- *
- * Processing is split into two passes per round:
- * 1. **Pass 1** — collect all `@EntitySpec` and `@DtoSpec` declarations to build a [SpecRegistry],
- *    then run DFS cycle detection on the entity dependency graph.
- * 2. **Pass 2** — inject the registry into [ClassResolver] and run all generators.
+ * Scans for `@ClassSpec`-annotated classes. Each `@ClassSpec` instance on a declaration
+ * drives generation of one output class. Output kind is inferred from the spec:
+ * - Any [FieldSpec] scoped to the suffix has non-empty `rules` → request class (init {})
+ * - `partial = true` → update-request style (all fields nullable)
+ * - Otherwise → data class with bidirectional mapper functions
  */
 class DomainMappingProcessorProvider : SymbolProcessorProvider {
 
     override fun create(environment: SymbolProcessorEnvironment) = object : SymbolProcessor {
 
         private val logger = environment.logger
-        private val classResolver = ClassResolver(logger)
-        private val entityGenerator = EntityGenerator(environment.codeGenerator, logger, classResolver)
-        private val dtoGenerator = DtoGenerator(environment.codeGenerator, logger, classResolver)
-        private val mapperGenerator = MapperGenerator(environment.codeGenerator, logger, classResolver)
+        private val classResolver  = ClassResolver(logger)
+        private val entityGenerator  = EntityGenerator(environment.codeGenerator, logger, classResolver)
+        private val dtoGenerator     = DtoGenerator(environment.codeGenerator, logger, classResolver)
+        private val mapperGenerator  = MapperGenerator(environment.codeGenerator, logger, classResolver)
         private val requestGenerator = RequestGenerator(environment.codeGenerator, logger, classResolver)
         private val transformerRegistryScanner = TransformerRegistryScanner(logger)
 
         override fun process(resolver: Resolver): List<KSAnnotated> {
             val transformerRegistry = transformerRegistryScanner.scan(resolver)
 
-            // --- PASS 1: Build SpecRegistry ---
-            val entityTargets = mutableMapOf<String, String>()  // domainFQN -> "AddressEntity"
-            val dtoTargets    = mutableMapOf<String, String>()  // domainFQN -> "AddressResponse"
-            val entityDomainDecls = mutableMapOf<String, KSClassDeclaration>()  // for cycle detection
+            // --- PASS 1: Build SpecRegistry from @ClassSpec ---
+            // Collect all non-request ClassSpec instances for nested-type resolution.
+            val entityTargets = mutableMapOf<String, String>()
+            val dtoTargets    = mutableMapOf<String, String>()
+            // Needed for cycle detection on entity-style outputs
+            val entityDomainDecls = mutableMapOf<String, KSClassDeclaration>()
 
-            resolver.getSymbolsWithAnnotation("com.example.annotations.EntitySpec")
+            resolver.getSymbolsWithAnnotation("com.example.annotations.ClassSpec")
                 .filterIsInstance<KSClassDeclaration>()
                 .forEach { spec ->
-                    val ann = spec.annotations.first { it.shortName.asString() == "EntitySpec" }
-                    val domainClass = (ann.arguments.first { it.name?.asString() == "for_" }.value as KSType)
-                        .declaration as KSClassDeclaration
-                    val fqn = domainClass.qualifiedName?.asString() ?: return@forEach
-                    val entityName = "${domainClass.simpleName.asString()}Entity"
-                    entityTargets[fqn] = entityName
-                    entityDomainDecls[fqn] = domainClass
-                }
+                    spec.classSpecAnnotations().forEach { csAnn ->
+                        val domainClass = csAnn.domainClass() ?: return@forEach
+                        val fqn    = domainClass.qualifiedName?.asString() ?: return@forEach
+                        val suffix = csAnn.argString("suffix")
+                        val prefix = csAnn.argString("prefix")
+                        val partial = csAnn.argBool("partial")
+                        val outputName = "$prefix${domainClass.simpleName.asString()}$suffix"
 
-            resolver.getSymbolsWithAnnotation("com.example.annotations.DtoSpec")
-                .filterIsInstance<KSClassDeclaration>()
-                .forEach { spec ->
-                    val ann = spec.annotations.first { it.shortName.asString() == "DtoSpec" }
-                    val domainClass = (ann.arguments.first { it.name?.asString() == "for_" }.value as KSType)
-                        .declaration as KSClassDeclaration
-                    val fqn = domainClass.qualifiedName?.asString() ?: return@forEach
-                    val suffix = ann.arguments.firstOrNull { it.name?.asString() == "suffix" }?.value as? String ?: "Dto"
-                    val prefix = ann.arguments.firstOrNull { it.name?.asString() == "prefix" }?.value as? String ?: ""
-                    val dtoName = "$prefix${domainClass.simpleName.asString()}$suffix"
-                    dtoTargets[fqn] = dtoName
+                        val hasRules = spec.hasRulesForSuffix(suffix)
+                        val isRequest = hasRules || partial
+
+                        if (!isRequest) {
+                            // Heuristic: suffix ending in "Entity" → entityTargets, else dtoTargets
+                            if (suffix.endsWith("Entity")) {
+                                entityTargets[fqn] = outputName
+                                entityDomainDecls[fqn] = domainClass
+                            } else {
+                                dtoTargets[fqn] = outputName
+                            }
+                        }
+                    }
                 }
 
             val specRegistry = SpecRegistry(entityTargets.toMap(), dtoTargets.toMap())
 
-            // --- PASS 1b: Cycle Detection ---
+            // --- PASS 1b: Cycle detection on entity-style outputs ---
             val graph = mutableMapOf<String, MutableSet<String>>()
             for ((fqn, domainDecl) in entityDomainDecls) {
                 val deps = mutableSetOf<String>()
                 val ctor = domainDecl.primaryConstructor ?: continue
                 for (param in ctor.parameters) {
                     val paramType = param.type.resolve()
-                    val paramFqn = paramType.declaration.qualifiedName?.asString()
+                    val paramFqn  = paramType.declaration.qualifiedName?.asString()
                     if (paramFqn != null && paramFqn in entityTargets) deps.add(paramFqn)
-                    // Also check collection element type
                     val elemType = extractCollectionElement(paramType)
-                    val elemFqn = elemType?.declaration?.qualifiedName?.asString()
+                    val elemFqn  = elemType?.declaration?.qualifiedName?.asString()
                     if (elemFqn != null && elemFqn in entityTargets) deps.add(elemFqn)
                 }
                 graph[fqn] = deps
@@ -92,23 +91,30 @@ class DomainMappingProcessorProvider : SymbolProcessorProvider {
             // --- PASS 2: Generate ---
             classResolver.registry = specRegistry
 
-            resolver.getSymbolsWithAnnotation("com.example.annotations.EntitySpec")
+            resolver.getSymbolsWithAnnotation("com.example.annotations.ClassSpec")
                 .filterIsInstance<KSClassDeclaration>()
                 .forEach { spec ->
-                    entityGenerator.generate(spec)
-                    mapperGenerator.generate(spec, transformerRegistry)
+                    spec.classSpecAnnotations().forEach { csAnn ->
+                        val domainClass = csAnn.domainClass() ?: return@forEach
+                        val suffix  = csAnn.argString("suffix")
+                        val partial = csAnn.argBool("partial")
+                        val hasRules = spec.hasRulesForSuffix(suffix)
+                        val isRequest = hasRules || partial
+
+                        if (isRequest) {
+                            requestGenerator.generate(spec, csAnn)
+                        } else {
+                            // Heuristic: "Entity" suffix → EntityGenerator; others → DtoGenerator
+                            if (suffix.endsWith("Entity")) {
+                                entityGenerator.generate(spec, csAnn)
+                            } else {
+                                dtoGenerator.generate(spec, csAnn)
+                            }
+                            mapperGenerator.generate(spec, csAnn, transformerRegistry)
+                        }
+                    }
                 }
-            resolver.getSymbolsWithAnnotation("com.example.annotations.DtoSpec")
-                .filterIsInstance<KSClassDeclaration>()
-                .forEach { spec ->
-                    dtoGenerator.generate(spec)
-                    mapperGenerator.generateDtoMappers(spec, transformerRegistry)
-                }
-            resolver.getSymbolsWithAnnotation("com.example.annotations.RequestSpec")
-                .filterIsInstance<KSClassDeclaration>()
-                .forEach { spec ->
-                    requestGenerator.generate(spec)
-                }
+
             return emptyList()
         }
 
@@ -119,3 +125,40 @@ class DomainMappingProcessorProvider : SymbolProcessorProvider {
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// Local helpers on KSClassDeclaration / KSAnnotation
+// ---------------------------------------------------------------------------
+
+/** Returns all @ClassSpec annotation instances on this declaration (handles @Repeatable container). */
+@Suppress("UNCHECKED_CAST")
+private fun KSClassDeclaration.classSpecAnnotations(): List<KSAnnotation> {
+    // KSP wraps @Repeatable annotations in a container; the container's short name is the
+    // annotation name + "s" (Kotlin convention). Handle both direct and container cases.
+    val direct = annotations.filter { it.shortName.asString() == "ClassSpec" }.toList()
+    if (direct.isNotEmpty()) return direct
+    // Fallback: check for a container annotation
+    val container = annotations.firstOrNull { it.shortName.asString() == "ClassSpecs" }
+    val nested = (container?.arguments?.firstOrNull()?.value as? List<*>)
+        ?.filterIsInstance<KSAnnotation>() ?: emptyList()
+    return nested
+}
+
+/** Extracts the domain KSClassDeclaration from a @ClassSpec annotation's `for_` argument. */
+private fun KSAnnotation.domainClass(): KSClassDeclaration? =
+    (arguments.firstOrNull { it.name?.asString() == "for_" }?.value as? KSType)
+        ?.declaration as? KSClassDeclaration
+
+/** Returns true if any @FieldSpec on this declaration targeting [suffix] has non-empty rules. */
+@Suppress("UNCHECKED_CAST")
+private fun KSClassDeclaration.hasRulesForSuffix(suffix: String): Boolean =
+    annotations
+        .filter { it.shortName.asString() == "FieldSpec" }
+        .filter { ann ->
+            val forList = ann.arguments.firstOrNull { it.name?.asString() == "for_" }?.value as? List<*>
+            forList?.filterIsInstance<String>()?.contains(suffix) == true
+        }
+        .any { ann ->
+            val rules = ann.arguments.firstOrNull { it.name?.asString() == "rules" }?.value as? List<*>
+            rules?.isNotEmpty() == true
+        }

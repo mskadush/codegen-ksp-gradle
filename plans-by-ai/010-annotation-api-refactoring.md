@@ -11,13 +11,13 @@ Goals: (1) collapse all output-class spec annotations into a single repeatable `
 
 ## Checklist
 
-- [ ] Step 1 — Add `@RuleExpression`; annotate existing `Rule.*` built-ins
-- [ ] Step 2 — Rename `DbAnnotation` → `CustomAnnotation`; replace `AnnotationMember` with `Array<String>`
-- [ ] Step 3 — New file: `@ClassSpec` (repeatable) + `@ClassField` + `@FieldSpec`
-- [ ] Step 4 — Delete old specific spec/field annotations
-- [ ] Step 5 — Update processor: new scan target, merged field model, output-kind inference, rule codegen
-- [ ] Step 6 — Update `app/` sample specs to new API
-- [ ] Step 7 — End-to-end verification
+- [x] Step 1 — Add `@RuleExpression`; annotate existing `Rule.*` built-ins
+- [x] Step 2 — Rename `DbAnnotation` → `CustomAnnotation`; replace `AnnotationMember` with `Array<String>`
+- [x] Step 3 — New file: `@ClassSpec` (repeatable) + `@ClassField` + `@FieldSpec`
+- [x] Step 4 — Delete old specific spec/field annotations
+- [x] Step 5 — Update processor: new scan target, merged field model, output-kind inference, rule codegen
+- [x] Step 6 — Update `app/` sample specs to new API
+- [x] Step 7 — End-to-end verification (`./gradlew :app:run` — BUILD SUCCESSFUL)
 
 ---
 

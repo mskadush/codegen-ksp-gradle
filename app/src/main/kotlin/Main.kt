@@ -24,10 +24,10 @@ fun main() {
     println(entity)
     val domainBack = entity.toDomain()
     println(domainBack)
-    val dto = user.toDto()
+    val dto = user.toResponse()
     println(dto)
     val domainFromDto = dto.toDomain()
     println(domainFromDto)
-    val createRequest = UserCreateRequest(id = 1L, name = "Alice", email = "alice@example.com")
+    val createRequest = UserCreateRequest(name = "Alice", email = "alice@example.com")
     println(createRequest)
 }
