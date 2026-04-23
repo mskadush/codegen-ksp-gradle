@@ -6,10 +6,10 @@ import com.example.annotations.FieldSpec
  * Entity-specific bundle for User: marks the primary key with JPA @Id and @GeneratedValue so
  * the spec itself stays clean of persistence boilerplate.
  *
- * Referenced from UserSpec via bundles = ["timestamps", "userEntity"] with MERGE_ADDITIVE so
- * the spec's nullable override on id is preserved while the bundle's annotations are added.
+ * Referenced from UserSpec via bundles = [TimestampsBundle::class, UserEntityBundle::class] with
+ * MERGE_ADDITIVE so the spec's nullable override on id is preserved while the bundle's annotations are added.
  */
-@FieldBundle("userEntity")
+@FieldBundle
 @FieldSpec(
     for_ = ["Entity"],
     property = "id",

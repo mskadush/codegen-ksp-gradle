@@ -59,7 +59,7 @@ class ValidationException(val errors: List<ValidationError>)
 /**
  * Accumulates validation results for a request object and produces a [ValidationResult].
  *
- * Generated `validate()` methods open a context, call `ensure*` for every applicable rule,
+ * Generated `validate()` methods open a context, call `ensure*` for every applicable [com.example.annotations.FieldValidator],
  * then return [build]. Call the methods directly when writing hand-crafted validators.
  *
  * ```kotlin

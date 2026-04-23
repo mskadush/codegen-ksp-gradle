@@ -6,7 +6,6 @@ import com.example.annotations.FieldSpec
 import com.example.annotations.IncludeBundles
 import com.example.annotations.NoOpTransformer
 import com.example.annotations.RegisterTransformer
-import com.example.annotations.RuleExpression
 import com.example.annotations.TransformerRegistry
 
 // ── Annotation short names (for shortName.asString() comparisons) ─────────────
@@ -17,7 +16,6 @@ internal val AN_FIELD_SPEC           = FieldSpec::class.simpleName!!
 internal val AN_FIELD_BUNDLE         = FieldBundle::class.simpleName!!
 internal val AN_INCLUDE_BUNDLES      = IncludeBundles::class.simpleName!!
 internal val AN_REGISTER_TRANSFORMER = RegisterTransformer::class.simpleName!!
-internal val AN_RULE_EXPRESSION      = RuleExpression::class.simpleName!!
 
 // ── Annotation FQNs (for getSymbolsWithAnnotation() calls) ────────────────────
 internal val FQN_CLASS_SPEC           = ClassSpec::class.qualifiedName!!
@@ -44,16 +42,16 @@ internal val PROP_TRANSFORMER     = ClassField::transformer.name
 internal val PROP_TRANSFORMER_REF = ClassField::transformerRef.name
 
 // ── FieldSpec-only property names ─────────────────────────────────────────────
-internal val PROP_RENAME = FieldSpec::rename.name
-internal val PROP_RULES  = FieldSpec::rules.name
+internal val PROP_RENAME      = FieldSpec::rename.name
+internal val PROP_VALIDATORS  = FieldSpec::validators.name
 
 // ── CustomAnnotation property names ───────────────────────────────────────────
 internal val PROP_ANNOTATION = CustomAnnotation::annotation.name
 internal val PROP_MEMBERS    = CustomAnnotation::members.name
 
-// ── FieldBundle / IncludeBundles property names ───────────────────────────────
-internal val PROP_NAME  = FieldBundle::name.name      // "name"
-internal val PROP_NAMES = IncludeBundles::names.name  // "names"
+// ── RegisterTransformer property name ─────────────────────────────────────────
+internal val PROP_NAME = RegisterTransformer::name.name  // "name"
 
-// ── RuleExpression property names ─────────────────────────────────────────────
-internal val PROP_EXPRESSION = RuleExpression::expression.name
+// ── IncludeBundles property name ──────────────────────────────────────────────
+internal val PROP_INCLUDE_BUNDLES = IncludeBundles::bundles.name  // "bundles"
+

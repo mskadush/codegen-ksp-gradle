@@ -11,8 +11,11 @@ import com.google.devtools.ksp.symbol.KSType
 /**
  * Typed view of a single [@ClassSpec] annotation instance.
  *
- * Parsed once at the boundary from a raw [KSAnnotation]; all downstream processor
- * code works with this typed struct instead of calling [argString]/[argBool] at each use site.
+ * Parsed once at the boundary from a raw [KSAnnotation]; all downstream processor code works
+ * with this typed struct instead of calling raw argument helpers at each use site.
+ *
+ * [bundleFQNs] holds the fully-qualified class names of every [@FieldBundle] class referenced
+ * in [@ClassSpec.bundles], derived from the KClass arguments at parse time.
  */
 data class ClassSpecModel(
     val domainClass: KSClassDeclaration,
@@ -20,7 +23,7 @@ data class ClassSpecModel(
     val prefix: String,
     val partial: Boolean,
     val validateOnConstruct: Boolean,
-    val bundleNames: List<String>,
+    val bundleFQNs: List<String>,
     val mergeStrategy: BundleMergeStrategy,
     val unmappedStrategy: UnmappedNestedStrategy,
     val classAnnotations: List<KSAnnotation>,
@@ -40,7 +43,7 @@ internal fun KSAnnotation.toClassSpecModel(): ClassSpecModel {
         prefix              = argString(PROP_PREFIX),
         partial             = argBool(PROP_PARTIAL),
         validateOnConstruct = argBool(PROP_VALIDATE_ON_CONSTRUCT),
-        bundleNames         = argStringList(PROP_BUNDLES),
+        bundleFQNs          = argKClassList(PROP_BUNDLES).mapNotNull { it.declaration.qualifiedName?.asString() },
         mergeStrategy       = argBundleMergeStrategy(),
         unmappedStrategy    = argUnmappedNestedStrategy(),
         classAnnotations    = argAnnotationList(),

@@ -4,7 +4,6 @@ import com.example.annotations.ClassSpec
 import com.example.annotations.CustomAnnotation
 import com.example.annotations.FieldSpec
 import com.example.annotations.NullableOverride
-import com.example.annotations.Rule
 import com.example.app.UpperCaseTransformer
 
 // ---------------------------------------------------------------------------
@@ -14,7 +13,7 @@ import com.example.app.UpperCaseTransformer
 @ClassSpec(
     for_ = User::class,
     suffix = "Entity",
-    bundles = ["timestamps", "userEntity"],
+    bundles = [TimestampsBundle::class, UserEntityBundle::class],
     bundleMergeStrategy = BundleMergeStrategy.MERGE_ADDITIVE,
     annotations = [
         CustomAnnotation(
@@ -33,8 +32,8 @@ import com.example.app.UpperCaseTransformer
         )
     ]
 )
-@ClassSpec(for_ = User::class, suffix = "CreateRequest", bundles = ["timestamps"])
-@ClassSpec(for_ = User::class, suffix = "UpdateRequest", partial = true, bundles = ["timestamps"])
+@ClassSpec(for_ = User::class, suffix = "CreateRequest", bundles = [TimestampsBundle::class])
+@ClassSpec(for_ = User::class, suffix = "UpdateRequest", partial = true, bundles = [TimestampsBundle::class])
 
 // ---- id: nullable in Entity, excluded everywhere else ----
 @FieldSpec(for_ = ["Entity"], property = "id", nullable = NullableOverride.YES)
@@ -56,12 +55,12 @@ import com.example.app.UpperCaseTransformer
 @FieldSpec(
     for_ = ["CreateRequest"],
     property = "email",
-    rules = [Rule.Email::class, Rule.NotBlank::class]
+    validators = [EmailValidator::class, NotBlankValidator::class]
 )
 @FieldSpec(
     for_ = ["UpdateRequest"],
     property = "email",
-    rules = [Rule.Email::class]
+    validators = [EmailValidator::class]
 )
 
 // ---- name: transformer in Entity; transformer in Response; validated in requests ----
@@ -80,11 +79,7 @@ import com.example.app.UpperCaseTransformer
 @FieldSpec(
     for_ = ["CreateRequest", "UpdateRequest"],
     property = "name",
-    rules = [Rule.NotBlank::class]
+    validators = [NotBlankValidator::class]
 )
-
-// ---- consumer-defined rule example ----
-// @RuleExpression("{field}.startsWith(\"ACM-\")")
-// annotation class AcmPrefix
 
 object UserSpec

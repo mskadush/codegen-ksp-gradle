@@ -31,8 +31,8 @@ private val VALIDATION_EXCEPTION = ValidationException::class.asClassName()
  * generator. Output shape is driven entirely by the spec:
  *
  * - `partial = true`            → every field is nullable with `= null` (update-request style).
- * - Any field has [FieldSpec.rules] → a `validate()` + `validateOrThrow()` function pair is
- *   emitted on the class. `validateOnConstruct = true` additionally emits `init { validateOrThrow() }`.
+ * - Any field has [FieldSpec.validators] → a `validate()` + `validateOrThrow()` pair is emitted
+ *   on the class. `validateOnConstruct = true` additionally emits `init { validateOrThrow() }`.
  * - [FieldSpec.rename]          → field name in the generated class differs from the domain name.
  * - Nested domain types that have their own spec for the same suffix are replaced with their
  *   generated equivalents (e.g. `Address` → `AddressEntity` when suffix = `"Entity"`).
@@ -47,7 +47,7 @@ class ClassGenerator(
     fun generate(spec: KSClassDeclaration, model: ClassSpecModel) {
         val outputName = model.outputName
         val overrides  = spec.resolveWithBundles(
-            model.suffix, model.bundleNames, model.mergeStrategy, bundleRegistry,
+            model.suffix, model.bundleFQNs, model.mergeStrategy, bundleRegistry,
         )
         val fields     = classResolver.resolveWithKinds(
             model.domainClass, model.unmappedStrategy, model.suffix,
@@ -74,9 +74,9 @@ class ClassGenerator(
                 else -> field.resolvedType
             }
 
-            val fieldName  = override?.rename?.takeIf { it.isNotBlank() } ?: field.originalName
-            val rules      = override?.rules ?: emptyList()
-            val ensureStmts = buildEnsureStatements(field.originalName, rules)
+            val fieldName   = override?.rename?.takeIf { it.isNotBlank() } ?: field.originalName
+            val validators  = override?.validators ?: emptyList()
+            val ensureStmts = buildValidatorCalls(field.originalName, validators, addImport)
 
             if (model.partial) {
                 val nullableType = baseType.copy(nullable = true)
@@ -170,37 +170,25 @@ class ClassGenerator(
             .build()
 
     // ---------------------------------------------------------------------------
-    // Rule → ensure() statement generation via @RuleExpression
+    // Validator → ensure() statement generation via FieldValidator KClass refs
     // ---------------------------------------------------------------------------
 
-    private fun buildEnsureStatements(fieldName: String, rules: List<KSType>): List<String> {
+    private fun buildValidatorCalls(
+        fieldName: String,
+        validators: List<KSType>,
+        addImport: (String, String) -> Unit,
+    ): List<String> {
         val statements = mutableListOf<String>()
-        for (ruleType in rules) {
-            val ruleDecl = ruleType.declaration as? KSClassDeclaration ?: continue
-            val ruleName = ruleDecl.simpleName.asString()
-
-            val exprTemplate = ruleDecl.annotations
-                .firstOrNull { it.shortName.asString() == AN_RULE_EXPRESSION }
-                ?.argString(PROP_EXPRESSION)
-
-            if (exprTemplate == null) {
-                logger.warn("ClassGenerator: rule '$ruleName' has no @RuleExpression — skipped")
+        for (validatorType in validators) {
+            val decl = validatorType.declaration as? KSClassDeclaration ?: continue
+            if (decl.qualifiedName == null) {
+                logger.warn("ClassGenerator: validator on '$fieldName' has no qualified name — skipped")
                 continue
             }
-
-            var expr = exprTemplate.replace("{field}", fieldName)
-
-            val unresolved = Regex("\\{\\w+\\}").find(expr)
-            if (unresolved != null) {
-                logger.warn(
-                    "ClassGenerator: rule '$ruleName' on '$fieldName' contains unresolved " +
-                    "placeholder '${unresolved.value}'. Rules with parameters must be wrapped " +
-                    "in a concrete annotation class annotated with @RuleExpression. Skipped."
-                )
-                continue
-            }
-
-            statements += """ctx.ensure($expr, FieldRef("$fieldName"), "$fieldName failed rule $ruleName")"""
+            val pkg  = decl.packageName.asString()
+            val name = decl.simpleName.asString()
+            addImport(pkg, name)
+            statements += """$name.let { v -> ctx.ensure(v.validate($fieldName), FieldRef("$fieldName"), v.message) }"""
         }
         return statements
     }

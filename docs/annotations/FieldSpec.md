@@ -1,6 +1,6 @@
 # `@FieldSpec`
 
-A **per-output field override**, scoped to one or more [`@ClassSpec`](ClassSpec.md) instances via `for_`. It lets you configure a field differently for each output kind — and share the same rules across multiple outputs by listing several suffixes in `for_`.
+A **per-output field override**, scoped to one or more [`@ClassSpec`](ClassSpec.md) instances via `for_`. It lets you configure a field differently for each output kind — and share the same validators across multiple outputs by listing several suffixes in `for_`.
 
 `@FieldSpec` wins over [`@ClassField`](ClassField.md) for the same `property` + suffix.
 
@@ -9,8 +9,6 @@ A **per-output field override**, scoped to one or more [`@ClassSpec`](ClassSpec.
 ---
 
 ## Properties
-
-### Common (all output kinds)
 
 | Property | Type | Default | Description |
 |---|---|---|---|
@@ -21,28 +19,10 @@ A **per-output field override**, scoped to one or more [`@ClassSpec`](ClassSpec.
 | `transformer` | `KClass<out FieldTransformer<*, *>>` | `NoOpTransformer::class` | Transformer class for value conversion. |
 | `transformerRef` | `String` | `""` | Named transformer from a [`@TransformerRegistry`](TransformerRegistry.md). Wins over `transformer`. |
 | `annotations` | `Array<CustomAnnotation>` | `[]` | Annotations forwarded to the generated field in the named output(s). |
+| `rename` | `String` | `""` | Alternative field name in the generated class. |
+| `validators` | `Array<KClass<out FieldValidator<*>>>` | `[]` | Runtime validators applied to this field. Each must be a singleton `object` implementing [`FieldValidator`](FieldValidator.md). Presence of any validator causes the processor to emit `validate()` and `validateOrThrow()` on the generated class. |
 
-### Entity-specific
-
-| Property | Type | Default | Description |
-|---|---|---|---|
-| `column` | `String` | `""` | Database column name override. |
-| `inline` | `Boolean` | `false` | Flatten a nested domain object's fields directly into this entity. |
-| `inlinePrefix` | `String` | `""` | Prefix prepended to inlined field names (only meaningful when `inline = true`). |
-
-### DTO-specific
-
-| Property | Type | Default | Description |
-|---|---|---|---|
-| `rename` | `String` | `""` | Alternative field name in the generated DTO class. |
-
-### Request-specific
-
-| Property | Type | Default | Description |
-|---|---|---|---|
-| `rules` | `Array<KClass<out Annotation>>` | `[]` | Validation rules to apply. Each rule annotation **must** be annotated with [`@RuleExpression`](RuleExpression.md). Presence of any rule makes the processor emit a request class. |
-
-> The processor ignores inapplicable params — `column` is silently skipped for DTO outputs, `rename` is skipped for entity outputs, etc.
+> The processor ignores inapplicable params — `rename` is silently skipped for outputs where it isn't relevant, etc.
 
 ---
 
@@ -54,28 +34,27 @@ A **per-output field override**, scoped to one or more [`@ClassSpec`](ClassSpec.
 // Make id nullable only in the entity
 @FieldSpec(for_ = ["Entity"], property = "id", nullable = NullableOverride.YES)
 
-// Rename email to emailAddress in the response DTO
+// Rename email to emailAddress in the response
 @FieldSpec(for_ = ["Response"], property = "email", rename = "emailAddress")
 ```
 
-### Sharing rules across multiple outputs
+### Sharing validators across multiple outputs
 
 ```kotlin
-// Same email rules apply to both request types
+// Same validators apply to both request types
 @FieldSpec(
     for_ = ["CreateRequest", "UpdateRequest"],
     property = "email",
-    rules = [Rule.Email::class, Rule.NotBlank::class]
+    validators = [EmailValidator::class, NotBlankValidator::class]
 )
 ```
 
-### Entity column mapping + custom annotation
+### Custom annotation on a field
 
 ```kotlin
 @FieldSpec(
     for_ = ["Entity"],
     property = "createdAt",
-    column = "created_at",
     annotations = [CustomAnnotation(
         annotation = jakarta.persistence.Column::class,
         members = ["name=\"created_at\"", "nullable=false", "updatable=false"]
@@ -93,18 +72,6 @@ A **per-output field override**, scoped to one or more [`@ClassSpec`](ClassSpec.
 @FieldSpec(for_ = ["Entity"], property = "id", nullable = NullableOverride.YES)
 ```
 
-### Inline nested object (entity)
-
-```kotlin
-// Flatten Address fields into UserEntity with an "address_" column prefix
-@FieldSpec(
-    for_ = ["Entity"],
-    property = "address",
-    inline = true,
-    inlinePrefix = "address_"
-)
-```
-
 ### Named transformer on a specific output
 
 ```kotlin
@@ -115,9 +82,11 @@ A **per-output field override**, scoped to one or more [`@ClassSpec`](ClassSpec.
 ### Full example from `UserSpec`
 
 ```kotlin
-@ClassSpec(for_ = User::class, suffix = "Entity", bundles = ["timestamps"])
+@ClassSpec(for_ = User::class, suffix = "Entity",
+           bundles = [TimestampsBundle::class, UserEntityBundle::class],
+           bundleMergeStrategy = BundleMergeStrategy.MERGE_ADDITIVE)
 @ClassSpec(for_ = User::class, suffix = "Response")
-@ClassSpec(for_ = User::class, suffix = "CreateRequest")
+@ClassSpec(for_ = User::class, suffix = "CreateRequest", bundles = [TimestampsBundle::class])
 @ClassSpec(for_ = User::class, suffix = "UpdateRequest", partial = true)
 
 @FieldSpec(for_ = ["Entity"], property = "id", nullable = NullableOverride.YES)
@@ -136,9 +105,9 @@ A **per-output field override**, scoped to one or more [`@ClassSpec`](ClassSpec.
 @FieldSpec(
     for_ = ["CreateRequest"],
     property = "email",
-    rules = [Rule.Email::class, Rule.NotBlank::class]
+    validators = [EmailValidator::class, NotBlankValidator::class]
 )
-@FieldSpec(for_ = ["UpdateRequest"], property = "email", rules = [Rule.Email::class])
+@FieldSpec(for_ = ["UpdateRequest"], property = "email", validators = [EmailValidator::class])
 
 @FieldSpec(
     for_ = ["Entity"],
@@ -152,7 +121,7 @@ A **per-output field override**, scoped to one or more [`@ClassSpec`](ClassSpec.
 @FieldSpec(
     for_ = ["CreateRequest", "UpdateRequest"],
     property = "name",
-    rules = [Rule.NotBlank::class]
+    validators = [NotBlankValidator::class]
 )
 object UserSpec
 ```
@@ -163,5 +132,5 @@ object UserSpec
 
 - [`@ClassSpec`](ClassSpec.md) — defines the output classes that `for_` refers to
 - [`@ClassField`](ClassField.md) — shared overrides that apply to all outputs (lower priority)
-- [`@RuleExpression`](RuleExpression.md) — how to define custom validation rules
+- [`FieldValidator`](FieldValidator.md) — how to define runtime validators
 - [`@FieldBundle`](FieldBundle.md) — package reusable `@FieldSpec` sets into bundles

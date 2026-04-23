@@ -3,7 +3,7 @@ import com.example.annotations.FieldBundle
 import com.example.annotations.FieldSpec
 import com.example.annotations.NullableOverride
 
-@FieldBundle("timestamps")
+@FieldBundle
 // Entity: Jakarta persistence annotations
 @FieldSpec(
     for_ = ["Entity"], property = "createdAt",

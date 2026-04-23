@@ -18,7 +18,7 @@ import com.google.devtools.ksp.symbol.KSType
  * Output shape is determined entirely by the spec parameters — there is no output-kind
  * discrimination based on suffix naming conventions:
  * - `partial = true`           → every field nullable with `= null` (no mapper generated)
- * - Any field has `rules`      → `validate()` + `validateOrThrow()` emitted on the class
+ * - Any field has `validators` → `validate()` + `validateOrThrow()` emitted on the class
  * - `validateOnConstruct=true` → `init { validateOrThrow() }` also emitted
  */
 class DomainMappingProcessorProvider : SymbolProcessorProvider {
@@ -140,7 +140,7 @@ private fun KSAnnotation.domainClass(): KSClassDeclaration? =
 /**
  * Validates that every `property` value in [@ClassField] and [@FieldSpec] annotations on this
  * spec references an actual primary constructor parameter of the domain class, and that every
- * bundle name in [@ClassSpec.bundles] exists in [bundleRegistry].
+ * bundle class in [@ClassSpec.bundles] is annotated with [@FieldBundle].
  */
 private fun KSClassDeclaration.validatePropertyRefs(
     bundleRegistry: BundleRegistry,
@@ -174,9 +174,13 @@ private fun KSClassDeclaration.validatePropertyRefs(
         val localDomainProps = domainClass.primaryConstructor?.parameters
             ?.mapNotNull { it.name?.asString() }?.toSet() ?: return@forEach
 
-        csAnn.argStringList(PROP_BUNDLES).forEach { bundleName ->
-            val bundleDecl = bundleRegistry.bundles[bundleName] ?: run {
-                logger.error("Unknown bundle '$bundleName' on $specName")
+        csAnn.argKClassList(PROP_BUNDLES).forEach { bundleType ->
+            val bundleFQN  = bundleType.declaration.qualifiedName?.asString() ?: return@forEach
+            val bundleDecl = bundleRegistry.bundles[bundleFQN] ?: run {
+                logger.error(
+                    "Bundle '${bundleType.declaration.simpleName.asString()}' on $specName " +
+                    "is not annotated with @FieldBundle"
+                )
                 return@forEach
             }
             bundleDecl.annotations

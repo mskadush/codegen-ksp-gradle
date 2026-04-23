@@ -4,8 +4,7 @@ package com.example.runtime
  * Custom validation hook invoked after a request object is constructed.
  *
  * Implement this interface and reference the class via the spec's validator parameter
- * to run cross-field or business-rule validation that cannot be expressed with rule
- * annotations alone.
+ * to run cross-field or business-rule validation that goes beyond single-field [com.example.annotations.FieldValidator] checks.
  *
  * @param T The generated request class being validated.
  */

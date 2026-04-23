@@ -11,9 +11,9 @@ enum class NullableOverride {
 }
 
 /**
- * Determines which definition wins when a spec and an included bundle both configure the same field.
+ * Determines which definition wins when a spec and an included [@FieldBundle] both configure the same field.
  *
- * Used by [EntitySpec.bundleMergeStrategy] and [DtoSpec.bundleMergeStrategy].
+ * Used by [ClassSpec.bundleMergeStrategy].
  */
 enum class BundleMergeStrategy {
     /** The spec's own field configuration takes precedence over the bundle (default). */
@@ -27,7 +27,7 @@ enum class BundleMergeStrategy {
 /**
  * Defines what the processor does when it encounters a nested domain type that has no explicit mapping.
  *
- * Used by [EntitySpec.unmappedNestedStrategy] and [DtoSpec.unmappedNestedStrategy].
+ * Used by [ClassSpec.unmappedNestedStrategy].
  */
 enum class UnmappedNestedStrategy {
     /** Abort generation with a compile-time error (default). */

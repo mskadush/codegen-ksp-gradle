@@ -1,36 +1,47 @@
 package com.example.annotations
 
+import kotlin.reflect.KClass
+
 /**
- * Marks a class as a named bundle of field configurations that can be shared
+ * Marks a class as a bundle of field configurations that can be shared
  * across multiple [@ClassSpec] specs.
  *
  * A bundle class carries the same [@ClassField] and [@FieldSpec] annotations as a spec class,
  * but without [@ClassSpec]. Field overrides inside a bundle are scoped to specific output kinds
  * via [@FieldSpec.for_] exactly as they are in any spec class.
  *
- * Reference the bundle by [name] in [@ClassSpec.bundles]. The processor merges the bundle's
- * field configurations into the spec according to [@ClassSpec.bundleMergeStrategy].
+ * Reference the bundle by class in [@ClassSpec.bundles]:
+ * ```kotlin
+ * @ClassSpec(for_ = User::class, suffix = "Entity", bundles = [TimestampsBundle::class])
+ * ```
  *
  * **Example**:
  * ```kotlin
- * @FieldBundle("timestamps")
+ * @FieldBundle
  * @FieldSpec(for_ = ["Entity"], property = "createdAt", rename = "created_at")
  * @FieldSpec(for_ = ["CreateRequest", "UpdateRequest"], property = "createdAt", exclude = true)
  * object TimestampsBundle
  * ```
- *
- * @param name Identifier used to reference this bundle from [@ClassSpec.bundles].
  */
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.SOURCE)
-annotation class FieldBundle(val name: String)
+annotation class FieldBundle
 
 /**
- * Explicitly lists bundles to include in the annotated spec class.
+ * Declares transitive bundle dependencies for the annotated bundle class.
  *
- * Alternative to listing bundles inside [@ClassSpec.bundles] when the list is long or shared
- * across spec classes.
+ * When a spec pulls in this bundle, the processor also merges all bundles listed here,
+ * in DFS pre-order (this bundle's own field configs first, then each included bundle in order).
  *
- * @param names Names of [@FieldBundle] classes to include.
+ * **Example**:
+ * ```kotlin
+ * @FieldBundle
+ * @IncludeBundles([OrderIdBundle::class])
+ * object OrderBaseBundle
+ * ```
+ *
+ * @param bundles Bundle classes to include transitively.
  */
-annotation class IncludeBundles(val names: Array<String>)
+@Target(AnnotationTarget.CLASS)
+@Retention(AnnotationRetention.SOURCE)
+annotation class IncludeBundles(val bundles: Array<KClass<*>>)

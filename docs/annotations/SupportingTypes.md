@@ -32,7 +32,7 @@ Used by: [`@ClassField.nullable`](ClassField.md), [`@FieldSpec.nullable`](FieldS
 
 ## `BundleMergeStrategy`
 
-Determines which definition wins when a spec and an included bundle both configure the same field.
+Determines which definition wins when a spec and an included [`@FieldBundle`](FieldBundle.md) both configure the same field.
 
 Used by: [`@ClassSpec.bundleMergeStrategy`](ClassSpec.md)
 
@@ -46,17 +46,17 @@ Used by: [`@ClassSpec.bundleMergeStrategy`](ClassSpec.md)
 
 - **`SPEC_WINS`** — The default and most common. Bundle provides sensible defaults; the spec can selectively override them.
 - **`BUNDLE_WINS`** — The bundle enforces a policy (e.g. mandatory column naming scheme); individual specs cannot deviate.
-- **`MERGE_ADDITIVE`** — The spec and bundle each configure non-overlapping aspects (e.g. bundle sets column names, spec sets transformers). Additive merge combines both without either overriding the other.
+- **`MERGE_ADDITIVE`** — The spec and bundle each configure non-overlapping aspects (e.g. bundle sets annotations, spec sets transformers). Additive merge combines both without either overriding the other.
 
 ### Example
 
 ```kotlin
-// Bundle defines column names; spec adds transformers.
+// Bundle defines JPA annotations; spec adds a transformer.
 // MERGE_ADDITIVE ensures both sets of configs are applied.
 @ClassSpec(
     for_ = User::class,
     suffix = "Entity",
-    bundles = ["timestamps", "userEntity"],
+    bundles = [TimestampsBundle::class, UserEntityBundle::class],
     bundleMergeStrategy = BundleMergeStrategy.MERGE_ADDITIVE
 )
 object UserSpec
@@ -73,7 +73,7 @@ Used by: [`@ClassSpec.unmappedNestedStrategy`](ClassSpec.md)
 | Value | Behaviour |
 |---|---|
 | `FAIL` _(default)_ | Abort generation with a compile-time error. Ensures no field is silently dropped. |
-| `INLINE` | Flatten the nested object's fields directly into the parent class (with an optional prefix). |
+| `INLINE` | Flatten the nested object's fields directly into the parent class. |
 | `EXCLUDE` | Silently omit the nested field from the generated class. |
 
 ### Example
@@ -107,45 +107,22 @@ object OrderSpec
 
 ---
 
-## `ExcludedFieldStrategy`
+## `@CustomAnnotation` {#customannotation}
 
-Defines what happens to fields that are excluded (via `@ClassField.exclude = true` or `@FieldSpec.exclude = true`) in a generated output class.
+Represents an **arbitrary annotation** to be emitted on a generated class or field. Use this when you need to attach framework-specific annotations (JPA, Jackson, etc.) that the DSL does not natively model.
 
-Used by: [`@ClassSpec.excludedFieldStrategy`](ClassSpec.md)
+> This is not a meta-annotation — it is a normal annotation used as an **array element** inside `@ClassSpec.annotations` and `@FieldSpec.annotations`.
 
-| Value | Behaviour |
-|---|---|
-| `USE_DEFAULT` _(default)_ | Use the field's default value if one exists; otherwise omit it from the generated class. |
-| `REQUIRE_MANUAL` | Require the caller to supply the field value manually in the mapping function. |
-| `NULLABLE_OVERRIDE` | Override the field to nullable so it can be set to `null`. |
-
-### Example
-
-```kotlin
-// id is excluded from CreateRequest but the mapper still needs a value.
-// REQUIRE_MANUAL forces the caller to supply it.
-@ClassSpec(
-    for_ = User::class,
-    suffix = "CreateRequest",
-    excludedFieldStrategy = ExcludedFieldStrategy.REQUIRE_MANUAL
-)
-@FieldSpec(for_ = ["CreateRequest"], property = "id", exclude = true)
-object UserSpec
-```
-
----
-
-## `@Index`
-
-Declares a database index to be generated on the enclosing entity's table. Currently referenced through `@CustomAnnotation` wrapping the target framework's own index annotation.
+### Properties
 
 | Property | Type | Default | Description |
 |---|---|---|---|
-| `columns` | `Array<String>` | _(required)_ | Column names that form the index key. |
-| `unique` | `Boolean` | `false` | When `true`, the generated index enforces uniqueness. |
-| `name` | `String` | `""` | Optional explicit index name; the generator derives a name when blank. |
+| `annotation` | `KClass<out Annotation>` | _(required)_ | The annotation class to emit. |
+| `members` | `Array<String>` | `[]` | Key-value pairs as `"name=value"` strings. Enum values may be short names (e.g. `"fetch=LAZY"`); the processor resolves the FQN and adds the required import. |
 
-### Example
+### Examples
+
+#### On a class
 
 ```kotlin
 @ClassSpec(
@@ -154,14 +131,54 @@ Declares a database index to be generated on the enclosing entity's table. Curre
     annotations = [
         CustomAnnotation(
             annotation = jakarta.persistence.Table::class,
-            members = [
-                "name=\"users\"",
-                "indexes={@Index(name=\"idx_users_email\", columnList=\"email\", unique=true)}"
-            ]
+            members = ["name=\"users\"", "schema=\"public\""]
+        ),
+        CustomAnnotation(annotation = jakarta.persistence.Entity::class)
+    ]
+)
+object UserSpec
+```
+
+Generated:
+
+```kotlin
+@Table(name = "users", schema = "public")
+@Entity
+data class UserEntity(...)
+```
+
+#### On a field
+
+```kotlin
+@FieldSpec(
+    for_ = ["Entity"],
+    property = "id",
+    annotations = [
+        CustomAnnotation(annotation = jakarta.persistence.Id::class),
+        CustomAnnotation(
+            annotation = jakarta.persistence.GeneratedValue::class,
+            members = ["strategy=jakarta.persistence.GenerationType.IDENTITY"]
         )
     ]
 )
 object UserSpec
+```
+
+Generated field:
+
+```kotlin
+@Id
+@GeneratedValue(strategy = jakarta.persistence.GenerationType.IDENTITY)
+val id: Long?,
+```
+
+#### Jackson annotation with enum value
+
+```kotlin
+CustomAnnotation(
+    annotation = com.fasterxml.jackson.annotation.JsonInclude::class,
+    members = ["value=com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL"]
+)
 ```
 
 ---
@@ -170,5 +187,5 @@ object UserSpec
 
 - [`@ClassSpec`](ClassSpec.md) — where these enums appear as parameters
 - [`@ClassField`](ClassField.md) — `NullableOverride` usage
-- [`@FieldSpec`](FieldSpec.md) — `NullableOverride` usage
-- [`@CustomAnnotation`](RuleExpression.md#customannotation) — forwarding `@Index` to generated classes
+- [`@FieldSpec`](FieldSpec.md) — `NullableOverride` and `validators` usage
+- [`@FieldBundle`](FieldBundle.md) — `BundleMergeStrategy` usage

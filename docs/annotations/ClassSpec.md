@@ -14,11 +14,10 @@ Drives generation of a **single output class** from a domain type. Apply it mult
 | `suffix` | `String` | `""` | Appended to the domain class name → output class name. Also used as the discriminator in [`@FieldSpec.for_`](FieldSpec.md). |
 | `prefix` | `String` | `""` | Prepended to the domain class name. |
 | `partial` | `Boolean` | `false` | When `true`, every generated field is nullable with `= null` defaults (update-request style). |
-| `bundles` | `Array<String>` | `[]` | Names of [`@FieldBundle`](FieldBundle.md) classes whose field configs are merged into this spec. |
+| `bundles` | `Array<KClass<*>>` | `[]` | [`@FieldBundle`](FieldBundle.md) classes whose field configs are merged into this spec. |
 | `bundleMergeStrategy` | `BundleMergeStrategy` | `SPEC_WINS` | How to resolve conflicts when spec and bundle configure the same field. See [`BundleMergeStrategy`](SupportingTypes.md#bundlemergestrategy). |
 | `unmappedNestedStrategy` | `UnmappedNestedStrategy` | `FAIL` | What to do when a nested domain type has no explicit mapping. See [`UnmappedNestedStrategy`](SupportingTypes.md#unmappednestedstrategy). |
-| `excludedFieldStrategy` | `ExcludedFieldStrategy` | `USE_DEFAULT` | How to treat excluded fields in the output class. See [`ExcludedFieldStrategy`](SupportingTypes.md#excludedfieldstrategy). |
-| `annotations` | `Array<CustomAnnotation>` | `[]` | Annotations forwarded verbatim to the generated class (e.g. `@Entity`, `@Table`). See [`@CustomAnnotation`](RuleExpression.md#customannotation). |
+| `annotations` | `Array<CustomAnnotation>` | `[]` | Annotations forwarded verbatim to the generated class (e.g. `@Entity`, `@Table`). See [`@CustomAnnotation`](SupportingTypes.md#customannotation). |
 | `validateOnConstruct` | `Boolean` | `false` | When `true`, emits `init { validateOrThrow() }` so validation runs on construction. Useful when deserialisation frameworks call the constructor directly. |
 
 ---
@@ -29,8 +28,8 @@ The processor automatically decides what kind of class to emit:
 
 | Condition | Output kind |
 |---|---|
-| Any `@FieldSpec` scoped to this suffix has non-empty `rules` | **Request class** — emits `validate()` and `validateOrThrow()` |
-| `partial = true` (without rules) | **Partial request class** — all fields nullable, same validation methods |
+| Any `@FieldSpec` scoped to this suffix has non-empty `validators` | **Request class** — emits `validate()` and `validateOrThrow()` |
+| `partial = true` (without validators) | **Partial request class** — all fields nullable, same validation methods |
 | Otherwise | **Data class** with bidirectional mapper functions (`to<Suffix>()` / `toDomain()`) |
 
 ---
@@ -55,7 +54,7 @@ data class User(
 @ClassSpec(
     for_ = User::class,
     suffix = "Entity",
-    bundles = ["timestamps", "userEntity"],
+    bundles = [TimestampsBundle::class, UserEntityBundle::class],
     bundleMergeStrategy = BundleMergeStrategy.MERGE_ADDITIVE,
     annotations = [
         CustomAnnotation(
@@ -74,7 +73,7 @@ data class User(
         )
     ]
 )
-@ClassSpec(for_ = User::class, suffix = "CreateRequest")
+@ClassSpec(for_ = User::class, suffix = "CreateRequest", bundles = [TimestampsBundle::class])
 @ClassSpec(for_ = User::class, suffix = "UpdateRequest", partial = true)
 object UserSpec
 ```
@@ -140,3 +139,4 @@ data class UserUpdateRequest(
 - [`@ClassField`](ClassField.md) — shared field overrides across all outputs
 - [`@FieldSpec`](FieldSpec.md) — per-output field overrides
 - [`@FieldBundle`](FieldBundle.md) — reusable field configuration bundles
+- [`@CustomAnnotation`](SupportingTypes.md#customannotation) — forwarding framework annotations to generated classes

@@ -2,9 +2,21 @@
 
 ## `@FieldBundle`
 
-Marks a class as a **named, reusable bundle of field configurations** that can be shared across multiple [`@ClassSpec`](ClassSpec.md) specs.
+Marks a class as a **reusable bundle of field configurations** that can be shared across multiple [`@ClassSpec`](ClassSpec.md) specs.
 
 A bundle class carries the same [`@ClassField`](ClassField.md) and [`@FieldSpec`](FieldSpec.md) annotations as any spec class — but without `@ClassSpec`. The processor merges the bundle's field configurations into each referencing spec according to the spec's `bundleMergeStrategy`.
+
+The bundle class itself is its own identity — reference it by `KClass` in `@ClassSpec.bundles`.
+
+> **Target**: `CLASS` · **Retention**: `SOURCE`
+
+_(No properties — the class reference is all that's needed.)_
+
+---
+
+## `@IncludeBundles`
+
+Declares **transitive bundle dependencies** for the annotated bundle class. When a spec pulls in a bundle annotated with `@IncludeBundles`, the processor also merges all listed bundles, in DFS pre-order (the outer bundle's own configs first, then each included bundle in order).
 
 > **Target**: `CLASS` · **Retention**: `SOURCE`
 
@@ -12,34 +24,22 @@ A bundle class carries the same [`@ClassField`](ClassField.md) and [`@FieldSpec`
 
 | Property | Type | Default | Description |
 |---|---|---|---|
-| `name` | `String` | _(required)_ | Identifier used to reference this bundle from `@ClassSpec.bundles`. |
-
----
-
-## `@IncludeBundles`
-
-An alternative to listing bundles inside `@ClassSpec.bundles` — useful when the bundle list is long or when the same set of bundles is shared across many spec classes.
-
-### Properties
-
-| Property | Type | Default | Description |
-|---|---|---|---|
-| `names` | `Array<String>` | _(required)_ | Names of `@FieldBundle` classes to include. |
+| `bundles` | `Array<KClass<*>>` | _(required)_ | `@FieldBundle` classes to include transitively. |
 
 ---
 
 ## How merging works
 
-When `@ClassSpec.bundles = ["timestamps"]` is set, the processor:
+When `@ClassSpec(bundles = [TimestampsBundle::class])` is set, the processor:
 
-1. Looks up the registered `@FieldBundle("timestamps")` class.
-2. Reads all `@ClassField` and `@FieldSpec` annotations from that class.
+1. Looks up `TimestampsBundle` in the bundle registry by its fully-qualified class name.
+2. Reads all `@ClassField` and `@FieldSpec` annotations from that bundle class.
 3. Merges them into the spec's own field configurations according to `bundleMergeStrategy`:
    - `SPEC_WINS` _(default)_ — spec's own config takes precedence; bundle fills gaps.
    - `BUNDLE_WINS` — bundle's config takes precedence; spec fills gaps.
-   - `MERGE_ADDITIVE` — both configs are combined; spec fills in anything the bundle left unset.
+   - `MERGE_ADDITIVE` — both configs are combined; each side fills in what the other left unset.
 
-Bundles can include other bundles transitively — reference additional bundle names via `@IncludeBundles` on the bundle class itself.
+Bundles can include other bundles transitively — reference additional bundle classes via `@IncludeBundles` on the bundle class itself.
 
 ---
 
@@ -48,17 +48,17 @@ Bundles can include other bundles transitively — reference additional bundle n
 ### Defining a bundle
 
 ```kotlin
-@FieldBundle("timestamps")
-// Entity: snake_case column names + Jakarta persistence annotations
+@FieldBundle
+// Entity: Jakarta persistence annotations
 @FieldSpec(
-    for_ = ["Entity"], property = "createdAt", column = "created_at",
+    for_ = ["Entity"], property = "createdAt",
     annotations = [CustomAnnotation(
         annotation = jakarta.persistence.Column::class,
         members = ["name=\"created_at\"", "nullable=false", "updatable=false"]
     )]
 )
 @FieldSpec(
-    for_ = ["Entity"], property = "updatedAt", column = "updated_at",
+    for_ = ["Entity"], property = "updatedAt",
     nullable = NullableOverride.YES,
     annotations = [CustomAnnotation(
         annotation = jakarta.persistence.Column::class,
@@ -77,10 +77,10 @@ object TimestampsBundle
 @ClassSpec(
     for_ = User::class,
     suffix = "Entity",
-    bundles = ["timestamps"],
+    bundles = [TimestampsBundle::class, UserEntityBundle::class],
     bundleMergeStrategy = BundleMergeStrategy.MERGE_ADDITIVE
 )
-@ClassSpec(for_ = User::class, suffix = "CreateRequest", bundles = ["timestamps"])
+@ClassSpec(for_ = User::class, suffix = "CreateRequest", bundles = [TimestampsBundle::class])
 object UserSpec
 ```
 
@@ -89,31 +89,23 @@ object UserSpec
 ### Transitive bundles
 
 ```kotlin
-// A base bundle
-@FieldBundle("auditFields")
-@ClassField(property = "createdBy", exclude = false)
-object AuditFieldsBundle
+// A leaf bundle
+@FieldBundle
+@FieldSpec(
+    for_ = ["Entity"], property = "id",
+    annotations = [CustomAnnotation(annotation = jakarta.persistence.Id::class)]
+)
+object OrderIdBundle
 
-// A composite bundle that pulls in auditFields
-@FieldBundle("fullAudit")
-@IncludeBundles(names = ["auditFields"])
-@FieldSpec(for_ = ["Entity"], property = "updatedBy", column = "updated_by")
-object FullAuditBundle
+// A composite bundle that pulls in OrderIdBundle
+@FieldBundle
+@IncludeBundles([OrderIdBundle::class])
+object OrderBaseBundle
 
-// Now a spec referencing "fullAudit" also gets "auditFields" configs automatically
-@ClassSpec(for_ = Order::class, suffix = "Entity", bundles = ["fullAudit"])
+// A spec referencing OrderBaseBundle also gets OrderIdBundle's configs automatically
+@ClassSpec(for_ = Order::class, suffix = "Entity", bundles = [OrderBaseBundle::class])
 object OrderSpec
 ```
-
-### Using `@IncludeBundles` on a spec instead of `@ClassSpec.bundles`
-
-```kotlin
-@ClassSpec(for_ = User::class, suffix = "Entity")
-@IncludeBundles(names = ["timestamps", "userEntity"])
-object UserSpec
-```
-
-This is equivalent to `@ClassSpec(..., bundles = ["timestamps", "userEntity"])`.
 
 ---
 
@@ -135,6 +127,6 @@ val updatedAt: Instant?,
 
 ## See also
 
-- [`@ClassSpec.bundles`](ClassSpec.md) — where bundles are referenced
+- [`@ClassSpec.bundles`](ClassSpec.md) — where bundle classes are referenced
 - [`BundleMergeStrategy`](SupportingTypes.md#bundlemergestrategy) — conflict resolution options
 - [`@FieldSpec`](FieldSpec.md) — the annotation type used inside bundle classes

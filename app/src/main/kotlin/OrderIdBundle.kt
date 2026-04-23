@@ -6,7 +6,7 @@ import com.example.annotations.FieldSpec
  * Leaf bundle: marks the primary key of any Order-style entity with JPA @Id and @GeneratedValue.
  * Included transitively by [OrderBaseBundle] via @IncludeBundles.
  */
-@FieldBundle("orderId")
+@FieldBundle
 @FieldSpec(
     for_ = ["Entity"],
     property = "id",

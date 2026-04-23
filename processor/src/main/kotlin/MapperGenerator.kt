@@ -42,7 +42,7 @@ class MapperGenerator(
         val outputName   = model.outputName
         val specName     = spec.simpleName.asString()
         val overrides    = spec.resolveWithBundles(
-            model.suffix, model.bundleNames, model.mergeStrategy, bundleRegistry,
+            model.suffix, model.bundleFQNs, model.mergeStrategy, bundleRegistry,
         )
         val specRegistry = classResolver.registry
 
