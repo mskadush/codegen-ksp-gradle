@@ -1,3 +1,4 @@
+import com.example.annotations.UnmappedNestedStrategy
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
@@ -8,7 +9,7 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 /**
  * Validates a domain class and extracts its primary constructor parameters as [FieldModel]s.
  *
- * Used by [EntityGenerator] (and other generators) to obtain the list of fields that should
+ * Used by [ClassGenerator] (and other generators) to obtain the list of fields that should
  * appear in a generated class. Validation errors are reported through [KSPLogger] and cause
  * the method to return `null` so the caller can skip generation cleanly.
  *
@@ -55,33 +56,34 @@ class ClassResolver(private val logger: KSPLogger) {
      *
      * - `FAIL`    → logs an error and skips the field (build will fail after the round).
      * - `EXCLUDE` → silently skips the field.
-     * - `INLINE`  → flattens the nested class's own fields into the parent, prefixed by
-     *   [inlineOverrides] entries' `inlinePrefix` (or the field name if blank).
+     * - `INLINE`  → flattens the nested class's own fields into the parent, using the field
+     *   name as the prefix.
+     *
+     * [suffix] is the output suffix being generated (e.g. `"Entity"`, `"Response"`), used to
+     * look up the correct generated type for nested mapped fields via [SpecRegistry.lookupNested].
      *
      * @param cls The domain class to resolve.
-     * @param unmappedNestedStrategy One of `"FAIL"`, `"INLINE"`, `"EXCLUDE"`.
-     * @param inlineOverrides Map of field name → its `@EntityField`/`@DtoField` annotation,
-     *   used to read `inlinePrefix` when strategy is INLINE.
+     * @param unmappedNestedStrategy Strategy for fields whose type has no spec for [suffix].
+     * @param suffix The output suffix, used for nested-type lookup.
      */
     fun resolveWithKinds(
         cls: KSClassDeclaration,
-        unmappedNestedStrategy: String,
-        overrides: Map<String, MergedOverride> = emptyMap(),
+        unmappedNestedStrategy: UnmappedNestedStrategy,
+        suffix: String = "",
     ): List<FieldModel>? {
         val baseFields = resolve(cls) ?: return null
         val result = mutableListOf<FieldModel>()
 
         for (field in baseFields) {
-            val kind = classifyField(field, unmappedNestedStrategy)
+            val kind = classifyField(field, unmappedNestedStrategy, suffix)
             when {
                 kind == null -> continue   // EXCLUDE or FAIL path — skip field
 
-                kind is FieldKind.Primitive && unmappedNestedStrategy == "INLINE" &&
+                kind is FieldKind.Primitive && unmappedNestedStrategy == UnmappedNestedStrategy.INLINE &&
                         isNonPrimitiveUnmapped(field) -> {
-                    // INLINE: flatten nested class fields into parent
+                    // INLINE: flatten nested class fields into parent, prefixed by field name
                     val nestedCls = field.originalType.declaration as? KSClassDeclaration ?: continue
-                    val prefix = overrides[field.originalName]?.inlinePrefix
-                        ?.takeIf { it.isNotBlank() } ?: field.originalName
+                    val prefix = field.originalName
                     val nestedFields = resolve(nestedCls) ?: continue
                     for (nf in nestedFields) {
                         val inlinedName = "$prefix${nf.originalName.replaceFirstChar { it.uppercase() }}"
@@ -100,16 +102,16 @@ class ClassResolver(private val logger: KSPLogger) {
     }
 
     /**
-     * Classifies [field]'s type against [registry].
+     * Classifies [field]'s type against [registry] for the given [suffix].
      *
      * Returns `null` when the field should be dropped (FAIL or EXCLUDE on unmapped nested type).
      */
-    private fun classifyField(field: FieldModel, unmappedNestedStrategy: String): FieldKind? {
+    private fun classifyField(field: FieldModel, unmappedNestedStrategy: UnmappedNestedStrategy, suffix: String): FieldKind? {
         // Collection types: List<T> / Set<T>
         val collectionElement = extractCollectionElement(field.originalType)
         if (collectionElement != null) {
             val elemFqn = collectionElement.declaration.qualifiedName?.asString() ?: return FieldKind.Primitive
-            val targetName = registry.entityTargets[elemFqn] ?: registry.dtoTargets[elemFqn]
+            val targetName = registry.lookupNested(elemFqn, suffix)
             if (targetName != null) {
                 return FieldKind.MappedCollection(
                     targetName = targetName,
@@ -117,7 +119,7 @@ class ClassResolver(private val logger: KSPLogger) {
                     collectionFQN = field.originalType.declaration.qualifiedName!!.asString(),
                 )
             }
-            return FieldKind.Primitive   // collection of primitives
+            return FieldKind.Primitive   // collection of primitives / no mapped equivalent for this suffix
         }
 
         val fqn = field.originalType.declaration.qualifiedName?.asString() ?: return FieldKind.Primitive
@@ -125,8 +127,8 @@ class ClassResolver(private val logger: KSPLogger) {
         // Standard library types are always primitive
         if (fqn.startsWith("kotlin.") || fqn.startsWith("java.")) return FieldKind.Primitive
 
-        // Look up in registry
-        val targetName = registry.entityTargets[fqn] ?: registry.dtoTargets[fqn]
+        // Look up the nested type for the same suffix
+        val targetName = registry.lookupNested(fqn, suffix)
         if (targetName != null) {
             return FieldKind.MappedObject(
                 targetName = targetName,
@@ -136,15 +138,15 @@ class ClassResolver(private val logger: KSPLogger) {
 
         // Unmapped non-primitive — apply strategy
         return when (unmappedNestedStrategy) {
-            "EXCLUDE" -> {
+            UnmappedNestedStrategy.EXCLUDE -> {
                 logger.info("ClassResolver: excluding unmapped nested type '$fqn' on field '${field.originalName}'")
                 null
             }
-            "INLINE" -> null   // handled by caller's expansion logic via isNonPrimitiveUnmapped check
-            else -> {   // FAIL
+            UnmappedNestedStrategy.INLINE -> null   // handled by caller's expansion logic via isNonPrimitiveUnmapped check
+            UnmappedNestedStrategy.FAIL -> {
                 val simpleName = field.originalType.declaration.simpleName.asString()
                 logger.error(
-                    "$simpleName has no @EntitySpec. " +
+                    "$simpleName has no spec for suffix '$suffix'. " +
                     "Declare one or set unmappedNestedStrategy = INLINE or EXCLUDE"
                 )
                 null
@@ -159,7 +161,7 @@ class ClassResolver(private val logger: KSPLogger) {
     private fun isNonPrimitiveUnmapped(field: FieldModel): Boolean {
         val fqn = field.originalType.declaration.qualifiedName?.asString() ?: return false
         if (fqn.startsWith("kotlin.") || fqn.startsWith("java.")) return false
-        if (registry.entityTargets.containsKey(fqn) || registry.dtoTargets.containsKey(fqn)) return false
+        if (registry.targets.containsKey(fqn)) return false
         if (extractCollectionElement(field.originalType) != null) return false
         return true
     }

@@ -14,7 +14,7 @@ package com.example.annotations
  * **Example**:
  * ```kotlin
  * @FieldBundle("timestamps")
- * @FieldSpec(for_ = ["Entity"], property = "createdAt", column = "created_at")
+ * @FieldSpec(for_ = ["Entity"], property = "createdAt", rename = "created_at")
  * @FieldSpec(for_ = ["CreateRequest", "UpdateRequest"], property = "createdAt", exclude = true)
  * object TimestampsBundle
  * ```

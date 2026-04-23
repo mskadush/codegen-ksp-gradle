@@ -4,16 +4,16 @@ import com.example.annotations.FieldSpec
 import com.example.annotations.NullableOverride
 
 @FieldBundle("timestamps")
-// Entity: snake_case column names + Jakarta persistence annotations
+// Entity: Jakarta persistence annotations
 @FieldSpec(
-    for_ = ["Entity"], property = "createdAt", column = "created_at",
+    for_ = ["Entity"], property = "createdAt",
     annotations = [CustomAnnotation(
         annotation = jakarta.persistence.Column::class,
         members = ["name=\"created_at\"", "nullable=false", "updatable=false"]
     )]
 )
 @FieldSpec(
-    for_ = ["Entity"], property = "updatedAt", column = "updated_at",
+    for_ = ["Entity"], property = "updatedAt",
     nullable = NullableOverride.YES,
     annotations = [CustomAnnotation(
         annotation = jakarta.persistence.Column::class,

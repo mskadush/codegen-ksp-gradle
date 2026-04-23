@@ -38,17 +38,4 @@ enum class UnmappedNestedStrategy {
     EXCLUDE
 }
 
-/**
- * Defines what happens to excluded fields in a generated DTO.
- *
- * Used by [DtoSpec.excludedFieldStrategy].
- */
-enum class ExcludedFieldStrategy {
-    /** Use the field's default value if one exists, otherwise omit it (default). */
-    USE_DEFAULT,
-    /** Require the caller to supply the field value manually in the mapping function. */
-    REQUIRE_MANUAL,
-    /** Override the field to nullable so it can be set to `null`. */
-    NULLABLE_OVERRIDE
-}
 

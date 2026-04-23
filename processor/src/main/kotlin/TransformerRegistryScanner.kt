@@ -18,7 +18,7 @@ class TransformerRegistryScanner(private val logger: KSPLogger) {
      */
     fun scan(resolver: Resolver): Map<String, String> {
         val registry = mutableMapOf<String, String>()
-        resolver.getSymbolsWithAnnotation("com.example.annotations.TransformerRegistry")
+        resolver.getSymbolsWithAnnotation(FQN_TRANSFORMER_REGISTRY)
             .filterIsInstance<KSClassDeclaration>()
             .forEach { cls ->
                 val objectFQN = cls.qualifiedName?.asString() ?: run {
@@ -27,13 +27,13 @@ class TransformerRegistryScanner(private val logger: KSPLogger) {
                 }
                 cls.getAllProperties()
                     .filter { prop ->
-                        prop.annotations.any { it.shortName.asString() == "RegisterTransformer" }
+                        prop.annotations.any { it.shortName.asString() == AN_REGISTER_TRANSFORMER }
                     }
                     .forEach { prop ->
                         val regAnnotation = prop.annotations
-                            .first { it.shortName.asString() == "RegisterTransformer" }
+                            .first { it.shortName.asString() == AN_REGISTER_TRANSFORMER }
                         val name = regAnnotation.arguments
-                            .firstOrNull { it.name?.asString() == "name" }
+                            .firstOrNull { it.name?.asString() == PROP_NAME }
                             ?.value as? String ?: run {
                             logger.warn(
                                 "TransformerRegistryScanner: @RegisterTransformer on " +

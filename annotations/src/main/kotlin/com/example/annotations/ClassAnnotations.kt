@@ -34,8 +34,7 @@ import kotlin.reflect.KClass
  * @param bundles                Names of [@FieldBundle] classes whose field configs are merged into this spec.
  * @param bundleMergeStrategy    How to resolve conflicts when spec and bundle configure the same field.
  * @param unmappedNestedStrategy What to do when a nested domain type has no explicit mapping.
- * @param excludedFieldStrategy  How to treat excluded fields in the output class.
- * @param annotations            Annotations forwarded verbatim to the generated class (e.g. `@Entity`).
+ * @param annotations            Annotations forwarded verbatim to the generated class.
  * @param validateOnConstruct    When `true`, emits an `init { validateOrThrow() }` block so the
  *                               object is validated immediately on construction. Useful when
  *                               deserialisation frameworks call the constructor directly.
@@ -51,7 +50,6 @@ annotation class ClassSpec(
     val bundles: Array<String> = [],
     val bundleMergeStrategy: BundleMergeStrategy = BundleMergeStrategy.SPEC_WINS,
     val unmappedNestedStrategy: UnmappedNestedStrategy = UnmappedNestedStrategy.FAIL,
-    val excludedFieldStrategy: ExcludedFieldStrategy = ExcludedFieldStrategy.USE_DEFAULT,
     val annotations: Array<CustomAnnotation> = [],
     val validateOnConstruct: Boolean = false,
 )
@@ -97,10 +95,9 @@ annotation class ClassField(
  * rule set to be shared across `CreateRequest` and `UpdateRequest` without duplication.
  * [FieldSpec] params win over [ClassField] for the same [property] + suffix combination.
  *
- * **Flat design** — all output-kind-specific params coexist; the processor ignores inapplicable ones:
- * - Entity-specific:  [column], [inline], [inlinePrefix]
- * - DTO-specific:     [rename]
- * - Request-specific: [rules] (each rule class must be annotated with [@RuleExpression])
+ * **Flat design** — all params coexist; the processor applies whichever are relevant:
+ * - [rename] — renames the field in the generated class.
+ * - [rules]  — emits `validate()` / `validateOrThrow()` on the generated class (each rule class must be annotated with [@RuleExpression]).
  *
  * **Example**:
  * ```kotlin
@@ -118,11 +115,8 @@ annotation class ClassField(
  * @param transformer    [FieldTransformer] class for value conversion.
  * @param transformerRef Named transformer; wins over [transformer].
  * @param annotations    Annotations forwarded to the generated field in the named output class(es).
- * @param column         Database column name (entity output).
- * @param inline         Flatten a nested domain object's fields into this entity (entity output).
- * @param inlinePrefix   Prefix prepended to inlined field names (entity output).
- * @param rename         Alternative field name in the generated class (DTO output).
- * @param rules          Validation rules; each must be annotated with [@RuleExpression] (request output).
+ * @param rename         Alternative field name in the generated class.
+ * @param rules          Validation rules; each must be annotated with [@RuleExpression].
  */
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.SOURCE)
@@ -135,12 +129,6 @@ annotation class FieldSpec(
     val transformer: KClass<out FieldTransformer<*, *>> = NoOpTransformer::class,
     val transformerRef: String = "",
     val annotations: Array<CustomAnnotation> = [],
-    // Entity-specific
-    val column: String = "",
-    val inline: Boolean = false,
-    val inlinePrefix: String = "",
-    // DTO-specific
     val rename: String = "",
-    // Request-specific
     val rules: Array<KClass<out Annotation>> = []
 )

@@ -21,14 +21,14 @@ data class BundleRegistry(
         fun build(resolver: Resolver, logger: KSPLogger): BundleRegistry {
             val result = mutableMapOf<String, KSClassDeclaration>()
 
-            resolver.getSymbolsWithAnnotation("com.example.annotations.FieldBundle")
+            resolver.getSymbolsWithAnnotation(FQN_FIELD_BUNDLE)
                 .filterIsInstance<KSClassDeclaration>()
                 .forEach { decl ->
                     val ann = decl.annotations.firstOrNull {
-                        it.shortName.asString() == "FieldBundle"
+                        it.shortName.asString() == AN_FIELD_BUNDLE
                     } ?: return@forEach
 
-                    val name = ann.argString("name")
+                    val name = ann.argString(PROP_NAME)
                     if (name.isBlank()) {
                         logger.error("@FieldBundle on ${decl.simpleName.asString()} has a blank name")
                         return@forEach
@@ -50,9 +50,9 @@ data class BundleRegistry(
             val inclusionGraph = mutableMapOf<String, Set<String>>()
             for ((bundleName, bundleDecl) in result) {
                 val includesAnn = bundleDecl.annotations.firstOrNull {
-                    it.shortName.asString() == "IncludeBundles"
+                    it.shortName.asString() == AN_INCLUDE_BUNDLES
                 }
-                val includedNames = includesAnn?.argStringList("names") ?: emptyList()
+                val includedNames = includesAnn?.argStringList(PROP_NAMES) ?: emptyList()
                 val validIncludes = mutableSetOf<String>()
                 for (includedName in includedNames) {
                     if (includedName !in result) {

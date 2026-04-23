@@ -50,22 +50,6 @@ annotation class CustomAnnotation(
 )
 
 /**
- * Declares a database index to be generated on the enclosing entity's table.
- *
- * Referenced from [ClassSpec.annotations] via a [CustomAnnotation] wrapping the framework's
- * index annotation, or directly in a future index-specific DSL.
- *
- * @param columns One or more column names that form the index key.
- * @param unique When `true`, the generated index enforces uniqueness.
- * @param name Optional explicit index name; the generator derives a name when left blank.
- */
-annotation class Index(
-    val columns: Array<String>,
-    val unique: Boolean = false,
-    val name: String = ""
-)
-
-/**
  * Built-in validation rules for use in [FieldSpec.rules].
  *
  * Each nested annotation is annotated with [@RuleExpression] so the processor can emit

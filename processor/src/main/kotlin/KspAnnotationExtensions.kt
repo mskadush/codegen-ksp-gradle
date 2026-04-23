@@ -1,4 +1,6 @@
-import com.google.devtools.ksp.processing.KSPLogger
+import com.example.annotations.BundleMergeStrategy
+import com.example.annotations.NullableOverride
+import com.example.annotations.UnmappedNestedStrategy
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSClassDeclaration
@@ -19,20 +21,14 @@ import com.squareup.kotlinpoet.ClassName
 data class MergedOverride(
     val property: String,
     val exclude: Boolean,
-    val nullable: String,          // "UNSET" | "YES" | "NO"
+    val nullable: NullableOverride,
     val transformerRef: String,
     val transformerFQN: String?,
     /** Raw CustomAnnotation KSAnnotations from @ClassField.annotations */
     val classLevelAnn: List<KSAnnotation>,
     /** Raw CustomAnnotation KSAnnotations from @FieldSpec.annotations */
     val fieldLevelAnn: List<KSAnnotation>,
-    // entity-specific
-    val column: String,
-    val inline: Boolean,
-    val inlinePrefix: String,
-    // DTO-specific
     val rename: String,
-    // request-specific
     val rules: List<KSType>,
 ) {
     /** Combined annotations: class-level first, then field-level overrides. */
@@ -53,16 +49,16 @@ data class MergedOverride(
 @Suppress("UNCHECKED_CAST")
 internal fun KSClassDeclaration.mergedFieldOverrides(suffix: String): Map<String, MergedOverride> {
     val classFields: Map<String, KSAnnotation> = annotations
-        .filter { it.shortName.asString() == "ClassField" }
-        .associateBy { it.argString("property") }
+        .filter { it.shortName.asString() == AN_CLASS_FIELD }
+        .associateBy { it.argString(PROP_PROPERTY) }
 
     val fieldSpecs: Map<String, KSAnnotation> = annotations
-        .filter { it.shortName.asString() == "FieldSpec" }
+        .filter { it.shortName.asString() == AN_FIELD_SPEC }
         .filter { ann ->
-            val forList = ann.arguments.firstOrNull { it.name?.asString() == "for_" }?.value as? List<*>
+            val forList = ann.arguments.firstOrNull { it.name?.asString() == PROP_FOR }?.value as? List<*>
             forList?.filterIsInstance<String>()?.contains(suffix) == true
         }
-        .associateBy { it.argString("property") }
+        .associateBy { it.argString(PROP_PROPERTY) }
 
     val allProperties = classFields.keys + fieldSpecs.keys
     return allProperties.associateWith { property ->
@@ -70,17 +66,14 @@ internal fun KSClassDeclaration.mergedFieldOverrides(suffix: String): Map<String
         val fs = fieldSpecs[property]
         MergedOverride(
             property      = property,
-            exclude       = fs?.argBool("exclude") ?: cf?.argBool("exclude") ?: false,
-            nullable      = fs?.argEnumName("nullable") ?: cf?.argEnumName("nullable") ?: "UNSET",
-            transformerRef= fs?.argString("transformerRef") ?: cf?.argString("transformerRef") ?: "",
-            transformerFQN= fs?.argKClassFQN("transformer") ?: cf?.argKClassFQN("transformer"),
+            exclude       = fs?.argBool(PROP_EXCLUDE) ?: cf?.argBool(PROP_EXCLUDE) ?: false,
+            nullable      = fs?.argNullableOverride() ?: cf?.argNullableOverride() ?: NullableOverride.UNSET,
+            transformerRef= fs?.argString(PROP_TRANSFORMER_REF) ?: cf?.argString(PROP_TRANSFORMER_REF) ?: "",
+            transformerFQN= fs?.argKClassFQN(PROP_TRANSFORMER) ?: cf?.argKClassFQN(PROP_TRANSFORMER),
             classLevelAnn = cf?.argAnnotationList() ?: emptyList(),
             fieldLevelAnn = fs?.argAnnotationList() ?: emptyList(),
-            column        = fs?.argString("column") ?: "",
-            inline        = fs?.argBool("inline") ?: false,
-            inlinePrefix  = fs?.argString("inlinePrefix") ?: "",
-            rename        = fs?.argString("rename") ?: "",
-            rules         = fs?.argKClassList("rules") ?: emptyList(),
+            rename        = fs?.argString(PROP_RENAME) ?: "",
+            rules         = fs?.argKClassList(PROP_RULES) ?: emptyList(),
         )
     }
 }
@@ -99,9 +92,8 @@ internal fun KSClassDeclaration.mergedFieldOverrides(suffix: String): Map<String
 internal fun KSClassDeclaration.resolveWithBundles(
     suffix: String,
     bundleNames: List<String>,
-    mergeStrategy: String,
+    mergeStrategy: BundleMergeStrategy,
     bundleRegistry: BundleRegistry,
-    logger: KSPLogger,
 ): Map<String, MergedOverride> {
     val specOverrides = mergedFieldOverrides(suffix)
     if (bundleNames.isEmpty()) return specOverrides
@@ -124,13 +116,13 @@ internal fun KSClassDeclaration.resolveWithBundles(
     if (bundleLayer.isEmpty()) return specOverrides
 
     return when (mergeStrategy) {
-        "BUNDLE_WINS" -> {
+        BundleMergeStrategy.BUNDLE_WINS -> {
             val merged = bundleLayer.toMutableMap()
             for ((prop, override) in specOverrides) merged.putIfAbsent(prop, override)
             merged
         }
-        "MERGE_ADDITIVE" -> mergeAdditive(specOverrides, bundleLayer)
-        else -> { // SPEC_WINS (default)
+        BundleMergeStrategy.MERGE_ADDITIVE -> mergeAdditive(specOverrides, bundleLayer)
+        BundleMergeStrategy.SPEC_WINS -> {
             val merged = specOverrides.toMutableMap()
             for ((prop, override) in bundleLayer) merged.putIfAbsent(prop, override)
             merged
@@ -158,14 +150,11 @@ private fun mergeAdditive(
         MergedOverride(
             property       = prop,
             exclude        = if (s.exclude) s.exclude else b.exclude,
-            nullable       = if (s.nullable != "UNSET") s.nullable else b.nullable,
+            nullable       = if (s.nullable != NullableOverride.UNSET) s.nullable else b.nullable,
             transformerRef = s.transformerRef.ifBlank { b.transformerRef },
             transformerFQN = s.transformerFQN ?: b.transformerFQN,
             classLevelAnn  = s.classLevelAnn.ifEmpty { b.classLevelAnn },
             fieldLevelAnn  = s.fieldLevelAnn.ifEmpty { b.fieldLevelAnn },
-            column         = s.column.ifBlank { b.column },
-            inline         = if (s.inline) s.inline else b.inline,
-            inlinePrefix   = s.inlinePrefix.ifBlank { b.inlinePrefix },
             rename         = s.rename.ifBlank { b.rename },
             rules          = s.rules.ifEmpty { b.rules },
         )
@@ -187,7 +176,7 @@ private fun mergeAdditive(
 internal fun KSAnnotation.customAnnotationSpecs(
     addImport: (pkg: String, name: String) -> Unit = { _, _ -> },
 ): List<AnnotationSpec> {
-    val list = arguments.firstOrNull { it.name?.asString() == "annotations" }
+    val list = arguments.firstOrNull { it.name?.asString() == PROP_ANNOTATIONS }
         ?.value as? List<*> ?: return emptyList()
     return list.filterIsInstance<KSAnnotation>().mapNotNull { it.toAnnotationSpec(addImport) }
 }
@@ -203,14 +192,14 @@ internal fun KSAnnotation.customAnnotationSpecs(
 internal fun KSAnnotation.toAnnotationSpec(
     addImport: (pkg: String, name: String) -> Unit = { _, _ -> },
 ): AnnotationSpec? {
-    val ksType = arguments.firstOrNull { it.name?.asString() == "annotation" }
+    val ksType = arguments.firstOrNull { it.name?.asString() == PROP_ANNOTATION }
         ?.value as? KSType ?: return null
     val decl = ksType.declaration
     val pkg = decl.packageName.asString()
     val cls = decl.simpleName.asString()
     val specBuilder = AnnotationSpec.builder(ClassName(pkg, cls))
 
-    val members = arguments.firstOrNull { it.name?.asString() == "members" }
+    val members = arguments.firstOrNull { it.name?.asString() == PROP_MEMBERS }
         ?.value as? List<*> ?: emptyList<Any>()
 
     // Build param-name → KSP parameter mapping for enum resolution
@@ -279,10 +268,34 @@ internal fun KSAnnotation.argKClassList(name: String): List<KSType> =
 /** Returns the raw [KSAnnotation] list stored in an `annotations: Array<CustomAnnotation>` arg. */
 @Suppress("UNCHECKED_CAST")
 internal fun KSAnnotation.argAnnotationList(): List<KSAnnotation> =
-    (arguments.firstOrNull { it.name?.asString() == "annotations" }?.value as? List<*>)
+    (arguments.firstOrNull { it.name?.asString() == PROP_ANNOTATIONS }?.value as? List<*>)
         ?.filterIsInstance<KSAnnotation>() ?: emptyList()
 
 @Suppress("UNCHECKED_CAST")
 internal fun KSAnnotation.argStringList(name: String): List<String> =
     (arguments.firstOrNull { it.name?.asString() == name }?.value as? List<*>)
         ?.filterIsInstance<String>() ?: emptyList()
+
+// ---------------------------------------------------------------------------
+// Typed enum extractors — one per annotation enum param
+// ---------------------------------------------------------------------------
+
+private fun KSAnnotation.rawEnumName(propName: String): String? {
+    val raw = arguments.firstOrNull { it.name?.asString() == propName }?.value ?: return null
+    return when (raw) {
+        is KSType -> raw.declaration.simpleName.asString()
+        is KSClassDeclaration -> raw.simpleName.asString()
+        else -> raw.toString().substringAfterLast('.')
+    }
+}
+
+internal fun KSAnnotation.argNullableOverride(): NullableOverride =
+    rawEnumName(PROP_NULLABLE)?.let { NullableOverride.valueOf(it) } ?: NullableOverride.UNSET
+
+internal fun KSAnnotation.argBundleMergeStrategy(): BundleMergeStrategy =
+    rawEnumName(PROP_BUNDLE_MERGE_STRATEGY)?.let { BundleMergeStrategy.valueOf(it) }
+        ?: BundleMergeStrategy.SPEC_WINS
+
+internal fun KSAnnotation.argUnmappedNestedStrategy(): UnmappedNestedStrategy =
+    rawEnumName(PROP_UNMAPPED_NESTED)?.let { UnmappedNestedStrategy.valueOf(it) }
+        ?: UnmappedNestedStrategy.FAIL

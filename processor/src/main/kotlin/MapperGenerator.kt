@@ -1,6 +1,6 @@
 import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.KSPLogger
-import com.google.devtools.ksp.symbol.KSAnnotation
+import com.example.annotations.NullableOverride
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.ClassName
@@ -10,14 +10,15 @@ import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.ksp.writeTo
 
 /**
- * Generates bidirectional mapper extension functions for a data-class output (entity or DTO).
+ * Generates bidirectional mapper extension functions for every non-partial [ClassSpec] output.
  *
- * For each non-request [ClassSpec] instance, emits a `<OutputName>Mappers.kt` file containing:
+ * Emits a `<OutputName>Mappers.kt` file containing:
  * - `fun <DomainClass>.to<Suffix>(): <OutputName>` — maps domain → output
  * - `fun <OutputName>.toDomain(): <DomainClass>` — maps output → domain
  *
- * **Nested types**: when a domain field's type itself has a registered output, the mapper emits
- * `.to<Suffix>()` / `.toDomain()` calls for those fields. Collection fields are mapped via `.map { }`.
+ * **Nested types**: when a domain field's type has a registered output for the same suffix,
+ * the mapper emits `.to<Suffix>()` / `.toDomain()` calls for those fields.
+ * Collection fields are mapped via `.map { }`.
  *
  * **Transformers**: fields with `transformer` or `transformerRef` overrides apply the transformer
  * in the forward and reverse directions respectively.
@@ -30,38 +31,30 @@ class MapperGenerator(
     var bundleRegistry: BundleRegistry = BundleRegistry.EMPTY
 
     private companion object {
-        const val NO_OP_TRANSFORMER = "com.example.annotations.NoOpTransformer"
+        val NO_OP_TRANSFORMER = FQN_NO_OP_TRANSFORMER
     }
 
     fun generate(
         spec: KSClassDeclaration,
-        classSpecAnn: KSAnnotation,
+        model: ClassSpecModel,
         transformerRegistry: Map<String, String> = emptyMap(),
     ) {
-        val domainClass = (classSpecAnn.arguments.first { it.name?.asString() == "for_" }.value as KSType)
-            .declaration as KSClassDeclaration
-        val domainName    = domainClass.simpleName.asString()
-        val domainPackage = domainClass.packageName.asString()
-        val suffix        = classSpecAnn.argString("suffix")
-        val prefix        = classSpecAnn.argString("prefix")
-        val outputName    = "$prefix$domainName$suffix"
-        val specName      = spec.simpleName.asString()
-
-        val unmappedStrategy = classSpecAnn.argEnumName("unmappedNestedStrategy")
-            .let { if (it == "UNSET") "FAIL" else it }
-
-        val bundleNames = classSpecAnn.argStringList("bundles")
-        val mergeStrategy = classSpecAnn.argEnumName("bundleMergeStrategy")
-        val overrides = spec.resolveWithBundles(suffix, bundleNames, mergeStrategy, bundleRegistry, logger)
+        val outputName   = model.outputName
+        val specName     = spec.simpleName.asString()
+        val overrides    = spec.resolveWithBundles(
+            model.suffix, model.bundleNames, model.mergeStrategy, bundleRegistry,
+        )
         val specRegistry = classResolver.registry
 
-        val domainClassName  = ClassName(domainPackage, domainName)
+        val domainClassName  = ClassName(model.domainPackage, model.domainName)
         val outputClassName  = ClassName("", outputName)
         // Mapper method name derived from suffix: "Entity" → "toEntity()", "Response" → "toResponse()"
-        val toOutputFunName  = "to$suffix"
+        val toOutputFunName  = "to${model.suffix}"
 
         // ---- forward mapper: domain → output ----
-        val expandedFields = classResolver.resolveWithKinds(domainClass, unmappedStrategy, overrides) ?: return
+        val expandedFields = classResolver.resolveWithKinds(
+            model.domainClass, model.unmappedStrategy, model.suffix,
+        ) ?: return
         val includedFields = expandedFields.filter { overrides[it.originalName]?.exclude != true }
 
         val toOutputArgs = includedFields.joinToString(", ") { field ->
@@ -98,7 +91,7 @@ class MapperGenerator(
             .build()
 
         // ---- reverse mapper: output → domain ----
-        val originalFields = classResolver.resolve(domainClass) ?: return
+        val originalFields = classResolver.resolve(model.domainClass) ?: return
 
         val toDomainArgs = originalFields.joinToString(", ") { field ->
             val override = overrides[field.originalName]
@@ -108,17 +101,15 @@ class MapperGenerator(
                 override?.exclude == true ->
                     "${field.originalName} = ${defaultValueLiteral(field.resolvedType)}"
 
-                isMappedObject(field.originalType, specRegistry.entityTargets) ||
-                isMappedObject(field.originalType, specRegistry.dtoTargets) ->
+                isMappedObject(field.originalType, specRegistry, model.suffix) ->
                     "${field.originalName} = this.$srcName.toDomain()"
 
-                isMappedCollection(field.originalType, specRegistry.entityTargets) ||
-                isMappedCollection(field.originalType, specRegistry.dtoTargets) ->
+                isMappedCollection(field.originalType, specRegistry, model.suffix) ->
                     "${field.originalName} = this.$srcName.map { it.toDomain() }"
 
                 else -> {
                     val baseExpr = reverseExpr(srcName, field.originalName, override, specName, transformerRegistry)
-                    val needsBang = override?.nullable == "YES" && !field.resolvedType.isNullable
+                    val needsBang = override?.nullable == NullableOverride.YES && !field.resolvedType.isNullable
                     "${field.originalName} = $baseExpr${if (needsBang) "!!" else ""}"
                 }
             }
@@ -130,7 +121,7 @@ class MapperGenerator(
             .build()
 
         val fileName = "${outputName}Mappers"
-        FileSpec.builder(domainPackage, fileName)
+        FileSpec.builder(model.domainPackage, fileName)
             .addFunction(toOutputFun)
             .addFunction(toDomainFun)
             .build()
@@ -143,15 +134,15 @@ class MapperGenerator(
     // Helpers
     // ---------------------------------------------------------------------------
 
-    private fun isMappedObject(type: KSType, targetMap: Map<String, String>): Boolean {
+    private fun isMappedObject(type: KSType, registry: SpecRegistry, suffix: String): Boolean {
         val fqn = type.declaration.qualifiedName?.asString() ?: return false
         if (fqn.startsWith("kotlin.") || fqn.startsWith("java.")) return false
-        return targetMap.containsKey(fqn)
+        return registry.lookupNested(fqn, suffix) != null
     }
 
-    private fun isMappedCollection(type: KSType, targetMap: Map<String, String>): Boolean {
+    private fun isMappedCollection(type: KSType, registry: SpecRegistry, suffix: String): Boolean {
         val elemFqn = extractCollectionElement(type)?.declaration?.qualifiedName?.asString() ?: return false
-        return targetMap.containsKey(elemFqn)
+        return registry.lookupNested(elemFqn, suffix) != null
     }
 
     private fun extractCollectionElement(type: KSType): KSType? {

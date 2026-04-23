@@ -64,11 +64,10 @@ import com.example.app.UpperCaseTransformer
     rules = [Rule.Email::class]
 )
 
-// ---- name: column + transformer in Entity; transformer in Response; validated in requests ----
+// ---- name: transformer in Entity; transformer in Response; validated in requests ----
 @FieldSpec(
     for_ = ["Entity"],
     property = "name",
-    column = "user_name2",
     transformer = UpperCaseTransformer::class,
     annotations = [
         CustomAnnotation(
