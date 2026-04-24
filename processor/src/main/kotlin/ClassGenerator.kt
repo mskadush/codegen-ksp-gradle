@@ -105,6 +105,47 @@ class ClassGenerator(
             }
         }
 
+        // ---- extra fields (not derived from domain) ----
+        for (extraAnn in spec.extraFieldAnnotations()) {
+            val forSuffixes = extraAnn.argStringList(PROP_FOR)
+            if (model.suffix !in forSuffixes) continue
+
+            val fieldName    = extraAnn.argString(PROP_EXTRA_NAME)
+            val isNullable   = extraAnn.argBool(PROP_EXTRA_NULLABLE)
+            val defaultExpr  = extraAnn.argString(PROP_EXTRA_DEFAULT)
+
+            val typeFQN = (extraAnn.arguments.firstOrNull { it.name?.asString() == PROP_EXTRA_TYPE }
+                ?.value as? KSType)?.declaration?.qualifiedName?.asString() ?: continue
+            val dotIdx  = typeFQN.lastIndexOf('.')
+            val baseType = if (dotIdx >= 0) {
+                ClassName(typeFQN.substring(0, dotIdx), typeFQN.substring(dotIdx + 1))
+            } else {
+                ClassName("", typeFQN)
+            }
+
+            val effectiveNullable = isNullable || model.partial
+            val finalType = baseType.copy(nullable = effectiveNullable)
+
+            val paramBuilder = ParameterSpec.builder(fieldName, finalType)
+            when {
+                model.partial        -> paramBuilder.defaultValue("null")
+                effectiveNullable && defaultExpr.isBlank() -> paramBuilder.defaultValue("null")
+                defaultExpr.isNotBlank() -> paramBuilder.defaultValue(defaultExpr)
+            }
+            ctorBuilder.addParameter(paramBuilder.build())
+
+            val propSpec = PropertySpec.builder(fieldName, finalType)
+                .initializer(fieldName)
+                .apply {
+                    extraAnn.argAnnotationList().forEach { raw ->
+                        raw.toAnnotationSpec(addImport)?.let { addAnnotation(it) }
+                    }
+                }
+                .build()
+            classBuilder.addProperty(propSpec)
+            fieldRulesList += FieldRules(fieldName, isNullable = effectiveNullable, emptyList())
+        }
+
         classBuilder.primaryConstructor(ctorBuilder.build())
 
         val hasValidation = fieldRulesList.any { it.stmts.isNotEmpty() }

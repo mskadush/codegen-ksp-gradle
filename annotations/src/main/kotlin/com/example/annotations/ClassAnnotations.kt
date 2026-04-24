@@ -1,5 +1,6 @@
 package com.example.annotations
 
+import org.intellij.lang.annotations.Language
 import kotlin.reflect.KClass
 
 /**
@@ -133,4 +134,53 @@ annotation class FieldSpec(
     val annotations: Array<CustomAnnotation> = [],
     val rename: String = "",
     val validators: Array<KClass<out FieldValidator<*>>> = []
+)
+
+/**
+ * Adds a synthetic field to one or more generated output classes.
+ *
+ * Unlike [FieldSpec], which overrides fields that originate from the domain class, [ExtraField]
+ * injects a brand-new field that has no counterpart in the domain. Typical uses include
+ * persistence metadata (`@Version`, `@CreationTimestamp`) or computed display fields that
+ * belong only to a specific output shape.
+ *
+ * **Mapper behaviour**: extra fields receive a constructor default value, so the generated
+ * `to<Suffix>()` mapper call omits them and Kotlin fills the default automatically.
+ *
+ * **Validation rule**: a non-partial, non-nullable extra field must have a non-blank
+ * [defaultValue] — without one the mapper cannot synthesise a value.
+ *
+ * **Example**:
+ * ```kotlin
+ * @ExtraField(
+ *     for_ = ["Entity"],
+ *     name = "version",
+ *     type = Long::class,
+ *     defaultValue = "0L",
+ *     annotations = [CustomAnnotation(annotation = jakarta.persistence.Version::class)]
+ * )
+ * object UserSpec
+ * ```
+ *
+ * @param for_         One or more [ClassSpec.suffix] values this field is added to.
+ * @param name         Field name in the generated class.
+ * @param type         Field type. Use simple, non-parameterised types (e.g. `Long::class`,
+ *                     `String::class`, `java.time.Instant::class`).
+ * @param nullable     When `true`, the generated field type is nullable.
+ * @param defaultValue Kotlin expression used as the constructor parameter default
+ *                     (e.g. `"0L"`, `"\"\"`, `"java.time.Instant.now()"`).
+ *                     Required for non-partial, non-nullable fields.
+ * @param annotations  Annotations forwarded verbatim to the generated field.
+ */
+@Target(AnnotationTarget.CLASS)
+@Retention(AnnotationRetention.SOURCE)
+@Repeatable
+annotation class ExtraField(
+    val for_: Array<String>,
+    val name: String,
+    val type: KClass<*>,
+    val nullable: Boolean = false,
+    @Language("kotlin", prefix = "val a = ")
+    val defaultValue: String = "",
+    val annotations: Array<CustomAnnotation> = [],
 )

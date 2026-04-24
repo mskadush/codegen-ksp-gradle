@@ -2,6 +2,7 @@ import com.example.annotations.BundleMergeStrategy
 import com.example.annotations.ClassField
 import com.example.annotations.ClassSpec
 import com.example.annotations.CustomAnnotation
+import com.example.annotations.ExtraField
 import com.example.annotations.FieldSpec
 import com.example.annotations.NullableOverride
 import com.example.app.UpperCaseTransformer
@@ -80,6 +81,15 @@ import com.example.app.UpperCaseTransformer
     for_ = ["CreateRequest", "UpdateRequest"],
     property = "name",
     validators = [NotBlankValidator::class]
+)
+
+// ---- extra fields: version only on Entity (JPA optimistic locking) ----
+@ExtraField(
+    for_ = ["Entity"],
+    name = "version",
+    type = Long::class,
+    defaultValue = "0L",
+    annotations = [CustomAnnotation(annotation = jakarta.persistence.Version::class)]
 )
 
 object UserSpec
