@@ -114,7 +114,7 @@ class ClassGenerator(
             val isNullable   = extraAnn.argBool(PROP_ADD_NULLABLE)
             val defaultExpr  = extraAnn.argString(PROP_ADD_DEFAULT)
 
-            val typeFQN = (extraAnn.arguments.firstOrNull { it.name?.asString() == PROP_EXTRA_TYPE }
+            val typeFQN = (extraAnn.arguments.firstOrNull { it.name?.asString() == PROP_ADD_TYPE }
                 ?.value as? KSType)?.declaration?.qualifiedName?.asString() ?: continue
             val dotIdx  = typeFQN.lastIndexOf('.')
             val baseType = if (dotIdx >= 0) {

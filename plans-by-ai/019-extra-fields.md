@@ -4,17 +4,17 @@
 
 All fields in generated classes currently come from the domain class's primary constructor
 parameters. There is no way to inject additional fields into a specific generated output that
-don't exist in the domain. This plan adds an `@ExtraField` annotation that lets users declare
+don't exist in the domain. This plan adds an `@AddField` annotation that lets users declare
 synthetic fields on individual generated outputs (e.g. a `createdAt: Instant` on an `Entity`
 class that has no counterpart in the domain model).
 
 ## Checklist
 
-- [ ] 1. Add `@ExtraField` annotation to `annotations` module
-- [ ] 2. Add `AN_EXTRA_FIELD`, `FQN_EXTRA_FIELD`, and property name constants to `AnnotationConstants.kt`
-- [ ] 3. Emit extra fields in `ClassGenerator` after the domain-derived fields loop
-- [ ] 4. Validate extra fields in `DomainMappingProcessorProvider` (PASS 1d)
-- [ ] 5. Add example usage in `UserSpec.kt`
+- [x] 1. Add `@AddField` annotation to `annotations` module
+- [x] 2. Add `AN_ADD_FIELD`, `FQN_ADD_FIELD`, and property name constants to `AnnotationConstants.kt`
+- [x] 3. Emit extra fields in `ClassGenerator` after the domain-derived fields loop
+- [x] 4. Validate extra fields in `DomainMappingProcessorProvider` (PASS 1d)
+- [x] 5. Add example usage in `UserSpec.kt`
 
 ---
 
@@ -27,7 +27,7 @@ New repeatable annotation placed on spec classes alongside `@ClassField` / `@Fie
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.SOURCE)
 @Repeatable
-annotation class ExtraField(
+annotation class AddField(
     val for_: Array<String>,                 // suffixes this field applies to
     val name: String,                        // field name in the generated class
     val type: KClass<*>,                     // field type (simple/non-generic types)
@@ -53,13 +53,13 @@ the default. No changes are required in `MapperGenerator`.
 
 ### Step 1 — `annotations/ClassAnnotations.kt`
 
-Append `@ExtraField` after the existing `@FieldSpec` declaration.
+Append `@AddField` after the existing `@FieldSpec` declaration.
 
 ```kotlin
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.SOURCE)
 @Repeatable
-annotation class ExtraField(
+annotation class AddField(
     val for_: Array<String>,
     val name: String,
     val type: KClass<*>,
@@ -74,15 +74,15 @@ annotation class ExtraField(
 ### Step 2 — `processor/AnnotationConstants.kt`
 
 ```kotlin
-internal val AN_EXTRA_FIELD      = ExtraField::class.simpleName!!
-internal val AN_EXTRA_FIELDS     = ExtraField::class.simpleName!! + "s"  // @Repeatable container
-internal val FQN_EXTRA_FIELD     = ExtraField::class.qualifiedName!!
+internal val AN_ADD_FIELD      = AddField::class.simpleName!!
+internal val AN_ADD_FIELDS     = AddField::class.simpleName!! + "s"  // @Repeatable container
+internal val FQN_ADD_FIELD     = AddField::class.qualifiedName!!
 
-// ExtraField property names
-internal val PROP_EXTRA_NAME     = ExtraField::name.name
-internal val PROP_EXTRA_TYPE     = ExtraField::type.name
-internal val PROP_EXTRA_NULLABLE = ExtraField::nullable.name
-internal val PROP_EXTRA_DEFAULT  = ExtraField::defaultValue.name
+// AddField property names
+internal val PROP_ADD_NAME     = AddField::name.name
+internal val PROP_ADD_TYPE     = AddField::type.name
+internal val PROP_ADD_NULLABLE = AddField::nullable.name
+internal val PROP_ADD_DEFAULT  = AddField::defaultValue.name
 ```
 
 (`PROP_FOR`, `PROP_ANNOTATIONS` are already defined and reused.)
@@ -93,7 +93,7 @@ internal val PROP_EXTRA_DEFAULT  = ExtraField::defaultValue.name
 
 After the existing domain-field loop (after `classBuilder.primaryConstructor(ctorBuilder.build())`
 is set up, but before calling `primaryConstructor`), add a second loop that reads
-`@ExtraField` annotations from the spec class filtered to `model.suffix`.
+`@AddField` annotations from the spec class filtered to `model.suffix`.
 
 **Logic per extra field:**
 - Resolve `KClass<*>` argument → `ClassName` via its qualified name
@@ -117,19 +117,19 @@ before `classBuilder.primaryConstructor(ctorBuilder.build())`.
 Inside `validatePropertyRefs`, after the bundle-property check, add:
 
 ```kotlin
-// Validate ExtraField constraints
-spec.extraFieldAnnotations().forEach { ann ->
+// Validate AddField constraints
+spec.addFieldAnnotations().forEach { ann ->
     val suffixes = ann.argStringList(PROP_FOR)
-    val fieldName = ann.argString(PROP_EXTRA_NAME)
-    val nullable = ann.argBool(PROP_EXTRA_NULLABLE)
-    val default = ann.argString(PROP_EXTRA_DEFAULT)
+    val fieldName = ann.argString(PROP_ADD_NAME)
+    val nullable = ann.argBool(PROP_ADD_NULLABLE)
+    val default = ann.argString(PROP_ADD_DEFAULT)
 
     spec.classSpecAnnotations().forEach { csAnn ->
         val model = csAnn.toClassSpecModel()
         if (model.suffix !in suffixes) return@forEach
         if (!model.partial && !nullable && default.isBlank()) {
             logger.error(
-                "ExtraField '$fieldName' on $specName for suffix '${model.suffix}' " +
+                "@AddField '$fieldName' on $specName for suffix '${model.suffix}' " +
                 "must have a defaultValue because the output is non-partial and non-nullable."
             )
         }
@@ -137,15 +137,15 @@ spec.extraFieldAnnotations().forEach { ann ->
 }
 ```
 
-Add a private `KSClassDeclaration.extraFieldAnnotations()` helper (mirrors
-`classSpecAnnotations()` but for `@ExtraField` / its repeatable container).
+Add a private `KSClassDeclaration.addFieldAnnotations()` helper (mirrors
+`classSpecAnnotations()` but for `@AddField` / its repeatable container).
 
 ---
 
 ### Step 5 — Example usage in `UserSpec.kt`
 
 ```kotlin
-@ExtraField(
+@AddField(
     for_ = ["Entity"],
     name = "version",
     type = Long::class,
@@ -163,11 +163,11 @@ The mapper omits it and Kotlin uses the default.
 
 | File | Change |
 |---|---|
-| `annotations/src/main/kotlin/com/example/annotations/ClassAnnotations.kt` | Add `@ExtraField` |
-| `processor/src/main/kotlin/AnnotationConstants.kt` | Add `AN_EXTRA_FIELD`, constants |
+| `annotations/src/main/kotlin/com/example/annotations/ClassAnnotations.kt` | Add `@AddField` |
+| `processor/src/main/kotlin/AnnotationConstants.kt` | Add `AN_ADD_FIELD`, constants |
 | `processor/src/main/kotlin/ClassGenerator.kt` | Emit extra fields in `generate()` |
 | `processor/src/main/kotlin/DomainMappingProcessorProvider.kt` | Validate extra fields in PASS 1d |
-| `app/src/main/kotlin/UserSpec.kt` | Add `@ExtraField` example |
+| `app/src/main/kotlin/UserSpec.kt` | Add `@AddField` example |
 
 `MapperGenerator.kt` requires **no changes** — extra fields have constructor defaults so the
 mapper call naturally omits them.
@@ -176,10 +176,10 @@ mapper call naturally omits them.
 
 ## Verification
 
-1. Run `./gradlew :app:build` — should compile cleanly with the new `@ExtraField` on `UserSpec`.
+1. Run `./gradlew :app:build` — should compile cleanly with the new `@AddField` on `UserSpec`.
 2. In the generated `UserEntity.kt`, confirm `version: Long = 0L` appears with `@Version`.
 3. In `UserEntityMappers.kt`, confirm `version` is NOT present in the `toEntity()` args.
 4. In `Main.kt` (or a test), construct a `UserEntity` without passing `version` and verify
    the default `0L` is used.
-5. Add a non-partial, non-nullable `@ExtraField` with no `defaultValue` and verify the
+5. Add a non-partial, non-nullable `@AddField` with no `defaultValue` and verify the
    processor emits an error.

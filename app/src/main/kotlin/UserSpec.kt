@@ -2,7 +2,7 @@ import com.example.annotations.BundleMergeStrategy
 import com.example.annotations.ClassField
 import com.example.annotations.ClassSpec
 import com.example.annotations.CustomAnnotation
-import com.example.annotations.ExtraField
+import com.example.annotations.AddField
 import com.example.annotations.FieldSpec
 import com.example.annotations.NullableOverride
 import com.example.app.UpperCaseTransformer
@@ -84,7 +84,7 @@ import com.example.app.UpperCaseTransformer
 )
 
 // ---- extra fields: version only on Entity (JPA optimistic locking) ----
-@ExtraField(
+@AddField(
     for_ = ["Entity"],
     name = "version",
     type = Long::class,
