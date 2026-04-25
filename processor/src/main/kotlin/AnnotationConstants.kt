@@ -1,7 +1,7 @@
 import com.example.annotations.ClassField
 import com.example.annotations.ClassSpec
 import com.example.annotations.CustomAnnotation
-import com.example.annotations.ExtraField
+import com.example.annotations.AddField
 import com.example.annotations.FieldBundle
 import com.example.annotations.FieldSpec
 import com.example.annotations.IncludeBundles
@@ -56,14 +56,14 @@ internal val PROP_NAME = RegisterTransformer::name.name  // "name"
 // ── IncludeBundles property name ──────────────────────────────────────────────
 internal val PROP_INCLUDE_BUNDLES = IncludeBundles::bundles.name  // "bundles"
 
-// ── ExtraField annotation short names + FQN ───────────────────────────────────
-internal val AN_EXTRA_FIELD  = ExtraField::class.simpleName!!
-internal val AN_EXTRA_FIELDS = ExtraField::class.simpleName!! + "s"  // @Repeatable container
-internal val FQN_EXTRA_FIELD = ExtraField::class.qualifiedName!!
+// ── AddField annotation short names + FQN ────────────────────────────────────
+internal val AN_ADD_FIELD  = AddField::class.simpleName!!
+internal val AN_ADD_FIELDS = AddField::class.simpleName!! + "s"  // @Repeatable container
+internal val FQN_ADD_FIELD = AddField::class.qualifiedName!!
 
-// ── ExtraField property names ──────────────────────────────────────────────────
-internal val PROP_EXTRA_NAME     = ExtraField::name.name
-internal val PROP_EXTRA_TYPE     = ExtraField::type.name
-internal val PROP_EXTRA_NULLABLE = ExtraField::nullable.name
-internal val PROP_EXTRA_DEFAULT  = ExtraField::defaultValue.name
+// ── AddField property names ───────────────────────────────────────────────────
+internal val PROP_ADD_NAME     = AddField::name.name
+internal val PROP_ADD_TYPE     = AddField::type.name
+internal val PROP_ADD_NULLABLE = AddField::nullable.name
+internal val PROP_ADD_DEFAULT  = AddField::defaultValue.name
 

@@ -194,15 +194,15 @@ private fun KSClassDeclaration.validatePropertyRefs(
         }
     }
 
-    // Validate @ExtraField constraints
-    extraFieldAnnotations().forEach { ann ->
+    // Validate @AddField constraints
+    addFieldAnnotations().forEach { ann ->
         val forSuffixes = ann.argStringList(PROP_FOR)
-        val fieldName   = ann.argString(PROP_EXTRA_NAME)
-        val isNullable  = ann.argBool(PROP_EXTRA_NULLABLE)
-        val default     = ann.argString(PROP_EXTRA_DEFAULT)
+        val fieldName   = ann.argString(PROP_ADD_NAME)
+        val isNullable  = ann.argBool(PROP_ADD_NULLABLE)
+        val default     = ann.argString(PROP_ADD_DEFAULT)
 
         if (fieldName.isBlank()) {
-            logger.error("@ExtraField on $specName has a blank 'name'")
+            logger.error("@AddField on $specName has a blank 'name'")
             return@forEach
         }
 
@@ -211,7 +211,7 @@ private fun KSClassDeclaration.validatePropertyRefs(
             if (model.suffix !in forSuffixes) return@forEach
             if (!model.partial && !isNullable && default.isBlank()) {
                 logger.error(
-                    "@ExtraField '$fieldName' on $specName for suffix '${model.suffix}' " +
+                    "@AddField '$fieldName' on $specName for suffix '${model.suffix}' " +
                     "must have a defaultValue (non-partial, non-nullable fields cannot be " +
                     "omitted by the mapper)"
                 )

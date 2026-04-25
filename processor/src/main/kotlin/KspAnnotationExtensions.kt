@@ -235,15 +235,15 @@ internal fun KSAnnotation.toAnnotationSpec(
 }
 
 // ---------------------------------------------------------------------------
-// extraFieldAnnotations — collect @ExtraField instances on a spec class
+// addFieldAnnotations — collect @AddField instances on a spec class
 // ---------------------------------------------------------------------------
 
-/** Returns all [@ExtraField] annotation instances on this declaration (handles @Repeatable container). */
+/** Returns all [@AddField] annotation instances on this declaration (handles @Repeatable container). */
 @Suppress("UNCHECKED_CAST")
-internal fun KSClassDeclaration.extraFieldAnnotations(): List<KSAnnotation> {
-    val direct = annotations.filter { it.shortName.asString() == AN_EXTRA_FIELD }.toList()
+internal fun KSClassDeclaration.addFieldAnnotations(): List<KSAnnotation> {
+    val direct = annotations.filter { it.shortName.asString() == AN_ADD_FIELD }.toList()
     if (direct.isNotEmpty()) return direct
-    val container = annotations.firstOrNull { it.shortName.asString() == AN_EXTRA_FIELDS }
+    val container = annotations.firstOrNull { it.shortName.asString() == AN_ADD_FIELDS }
     val nested = (container?.arguments?.firstOrNull()?.value as? List<*>)
         ?.filterIsInstance<KSAnnotation>() ?: emptyList()
     return nested

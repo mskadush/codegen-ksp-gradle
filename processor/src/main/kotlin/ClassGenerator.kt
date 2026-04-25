@@ -105,14 +105,14 @@ class ClassGenerator(
             }
         }
 
-        // ---- extra fields (not derived from domain) ----
-        for (extraAnn in spec.extraFieldAnnotations()) {
+        // ---- add fields (not derived from domain) ----
+        for (extraAnn in spec.addFieldAnnotations()) {
             val forSuffixes = extraAnn.argStringList(PROP_FOR)
             if (model.suffix !in forSuffixes) continue
 
-            val fieldName    = extraAnn.argString(PROP_EXTRA_NAME)
-            val isNullable   = extraAnn.argBool(PROP_EXTRA_NULLABLE)
-            val defaultExpr  = extraAnn.argString(PROP_EXTRA_DEFAULT)
+            val fieldName    = extraAnn.argString(PROP_ADD_NAME)
+            val isNullable   = extraAnn.argBool(PROP_ADD_NULLABLE)
+            val defaultExpr  = extraAnn.argString(PROP_ADD_DEFAULT)
 
             val typeFQN = (extraAnn.arguments.firstOrNull { it.name?.asString() == PROP_EXTRA_TYPE }
                 ?.value as? KSType)?.declaration?.qualifiedName?.asString() ?: continue
