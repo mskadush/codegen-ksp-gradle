@@ -10,7 +10,7 @@ name via Kotlin reflection so the compiler catches any mismatch.
 
 ## Unused property finding (no code change needed, just report)
 
-`@ClassSpec.excludedFieldStrategy` (ClassAnnotations.kt:54) is **never accessed** in any
+`@ClassSpec.excludedFieldStrategy` (ClassSpec.kt:54) is **never accessed** in any
 processor file. No call to `argEnumName("excludedFieldStrategy")` or any equivalent exists.
 The enum value `ExcludedFieldStrategy.USE_DEFAULT` is defined in Enums.kt and referenced only in
 the annotation's default, but the processor never reads it. Report to user; do not delete yet.

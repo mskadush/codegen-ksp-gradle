@@ -69,7 +69,7 @@ class UserSpec
 
 ## Step 1 — `@RuleExpression` meta-annotation
 
-**File**: `annotations/src/main/kotlin/com/example/annotations/SupportingAnnotations.kt`
+**File**: `annotations/src/main/kotlin/com/example/annotations/CustomAnnotation.kt`
 
 ```kotlin
 /**
@@ -116,7 +116,7 @@ at the call site.
 ## Step 2 — `DbAnnotation` → `CustomAnnotation`; members as `Array<String>`
 
 **Files**:
-- `annotations/src/main/kotlin/com/example/annotations/SupportingAnnotations.kt`
+- `annotations/src/main/kotlin/com/example/annotations/CustomAnnotation.kt`
 - `annotations/build.gradle.kts`
 - All files referencing `DbAnnotation` or `AnnotationMember`
 
@@ -151,7 +151,7 @@ For each `"paramName=VALUE"` member string when emitting a `CustomAnnotation`:
 
 ## Step 3 — `@ClassSpec`, `@ClassField`, `@FieldSpec`
 
-**New file**: `annotations/src/main/kotlin/com/example/annotations/ClassAnnotations.kt`
+**New file**: `annotations/src/main/kotlin/com/example/annotations/ClassSpec.kt`
 
 ### `@ClassSpec`
 
@@ -266,8 +266,8 @@ annotation class FieldSpec(
 | `annotations/.../EntityAnnotations.kt` | Delete `EntitySpec`, `EntityField`; file can be deleted |
 | `annotations/.../DtoAnnotations.kt` | Delete `DtoSpec`, `DtoField`; file can be deleted |
 | `annotations/.../RequestAnnotations.kt` | Delete `RequestSpec`, `CreateSpec`, `UpdateSpec`, `CreateField`, `UpdateField`; file can be deleted |
-| `annotations/.../SupportingAnnotations.kt` | Delete `AnnotationMember` |
-| `annotations/.../BundleAnnotations.kt` | **Keep as-is** — bundle consolidation is a later task |
+| `annotations/.../CustomAnnotation.kt` | Delete `AnnotationMember` |
+| `annotations/.../IncludeBundles.kt` | **Keep as-is** — bundle consolidation is a later task |
 
 ---
 
@@ -390,8 +390,8 @@ unchanged); `user.toDto()` → `user.toResponse()` (suffix change).
 
 | File | Change |
 |---|---|
-| `annotations/.../SupportingAnnotations.kt` | Add `@RuleExpression`; rename `DbAnnotation` → `CustomAnnotation`; delete `AnnotationMember`; annotate `Rule.*` |
-| `annotations/.../ClassAnnotations.kt` | **New** — `@ClassSpec`, `@ClassField`, `@FieldSpec` |
+| `annotations/.../CustomAnnotation.kt` | Add `@RuleExpression`; rename `DbAnnotation` → `CustomAnnotation`; delete `AnnotationMember`; annotate `Rule.*` |
+| `annotations/.../ClassSpec.kt` | **New** — `@ClassSpec`, `@ClassField`, `@FieldSpec` |
 | `annotations/.../EntityAnnotations.kt` | Delete |
 | `annotations/.../DtoAnnotations.kt` | Delete |
 | `annotations/.../RequestAnnotations.kt` | Delete |

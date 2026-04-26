@@ -1,7 +1,7 @@
 # Plan 004: IncludeBundles Transitive Resolution + Cycle Detection
 
 **Created**: 2026-04-21
-**Context**: Step 14 of the domain-mapping processor. The `@IncludeBundles` annotation existed in `BundleAnnotations.kt` but was never read by the processor. This plan wires it up: bundles can declare transitive includes, the processor resolves them DFS-order, and cycle detection prevents infinite loops.
+**Context**: Step 14 of the domain-mapping processor. The `@IncludeBundles` annotation existed in `IncludeBundles.kt` but was never read by the processor. This plan wires it up: bundles can declare transitive includes, the processor resolves them DFS-order, and cycle detection prevents infinite loops.
 
 ## Approach
 

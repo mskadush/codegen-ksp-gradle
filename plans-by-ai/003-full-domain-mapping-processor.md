@@ -211,8 +211,8 @@ and removed the separate `Relation` annotation. All JPA/framework annotations (i
 `DbAnnotation(annotation = SomeClass::class, members = [...])` pattern. The processor reads the
 `KSType` from the `annotation` argument and derives the package + simple name for `ClassName`.
 
-- [x] Change `DbAnnotation.fqn: String` → `DbAnnotation.annotation: KClass<out Annotation>` in `SupportingAnnotations.kt`
-- [x] Add `import kotlin.reflect.KClass` to `SupportingAnnotations.kt`
+- [x] Change `DbAnnotation.fqn: String` → `DbAnnotation.annotation: KClass<out Annotation>` in `CustomAnnotation.kt`
+- [x] Add `import kotlin.reflect.KClass` to `CustomAnnotation.kt`
 - [x] Update KDoc on `DbAnnotation` (`@param annotation` / `@param members`)
 - [x] Update `KspAnnotationExtensions.kt` — read `KSType` from `"annotation"` arg; derive pkg+cls via `ksType.declaration`
 - [x] `EntityGenerator.kt` — already uses `dbAnnotationSpecs()` passthrough; no hardcoded `@Table`/`@Column` to remove

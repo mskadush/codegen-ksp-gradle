@@ -54,7 +54,7 @@ Mapper generation: triggered for every non-partial output (was previously only e
 
 ## Checklist
 
-- [x] 1. `ClassAnnotations.kt` — remove `column`, `inline`, `inlinePrefix` from FieldSpec; remove `excludedFieldStrategy` from ClassSpec
+- [x] 1. `ClassSpec.kt` — remove `column`, `inline`, `inlinePrefix` from FieldSpec; remove `excludedFieldStrategy` from ClassSpec
 - [x] 2. `Enums.kt` — remove `ExcludedFieldStrategy`
 - [x] 3. `AnnotationConstants.kt` — remove `PROP_COLUMN`, `PROP_INLINE`, `PROP_INLINE_PREFIX`
 - [x] 4. `KspAnnotationExtensions.kt` — remove those fields from MergedOverride, mergedFieldOverrides(), mergeAdditive()
@@ -64,4 +64,4 @@ Mapper generation: triggered for every non-partial output (was previously only e
 - [x] 8. `MapperGenerator.kt` — update nested lookup to use targets[fqn]?.get(suffix)
 - [x] 9. `DomainMappingProcessorProvider.kt` — build new targets map; remove heuristic dispatch; use ClassGenerator
 - [x] 10. Delete `EntityGenerator.kt`, `DtoGenerator.kt`, `RequestGenerator.kt`
-- [x] 11. `BundleAnnotations.kt` — remove `column` reference from example in kdoc
+- [x] 11. `IncludeBundles.kt` — remove `column` reference from example in kdoc

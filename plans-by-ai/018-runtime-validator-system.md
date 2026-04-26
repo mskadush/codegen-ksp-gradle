@@ -11,8 +11,8 @@ Each validator is a singleton `object` implementing `FieldValidator<T>`. The pro
 
 1. - [x] Save plan file
 2. - [ ] **runtime** — Add `FieldValidator.kt`: `interface FieldValidator<in T> { val message: String; fun validate(value: T): Boolean }`
-3. - [ ] **annotations** — `SupportingAnnotations.kt`: remove `@RuleExpression` + `Rule` class
-4. - [ ] **annotations** — `ClassAnnotations.kt` `@FieldSpec`: replace `rules: Array<KClass<out Annotation>>` with `validators: Array<KClass<out FieldValidator<*>>>`
+3. - [ ] **annotations** — `CustomAnnotation.kt`: remove `@RuleExpression` + `Rule` class
+4. - [ ] **annotations** — `ClassSpec.kt` `@FieldSpec`: replace `rules: Array<KClass<out Annotation>>` with `validators: Array<KClass<out FieldValidator<*>>>`
 5. - [ ] **processor** — `AnnotationConstants.kt`: remove `AN_RULE_EXPRESSION`, `PROP_RULES`, `PROP_EXPRESSION`; add `PROP_VALIDATORS`
 6. - [ ] **processor** — `KspAnnotationExtensions.kt`: `MergedOverride.rules` → `validators: List<KSType>`; update `mergedFieldOverrides` + `mergeAdditive`
 7. - [ ] **processor** — `ClassGenerator.kt`: replace `buildEnsureStatements()` with `buildValidatorCalls()` using KSType FQNs
@@ -35,4 +35,4 @@ EmailValidator.let { v -> ctx.ensure(v.validate(email), FieldRef("email"), v.mes
 ## Dependencies/Risks
 
 - `FieldValidator` must be in the `runtime` module (same as `FieldTransformer`) so it's available at runtime without pulling in the processor
-- `ClassAnnotations.kt` imports `FieldValidator` from runtime — the annotations module depends on runtime already (via `FieldTransformer`)
+- `ClassSpec.kt` imports `FieldValidator` from runtime — the annotations module depends on runtime already (via `FieldTransformer`)

@@ -28,7 +28,7 @@ Five sequential parts: annotations → registry → resolution logic → generat
 ## Checklist
 
 ### Part A — Annotation consolidation
-**File:** `annotations/src/main/kotlin/com/example/annotations/BundleAnnotations.kt`
+**File:** `annotations/src/main/kotlin/com/example/annotations/IncludeBundles.kt`
 
 - [x] A1: Delete `@EntityBundle`
 - [x] A2: Delete `@DtoBundle`
@@ -36,7 +36,7 @@ Five sequential parts: annotations → registry → resolution logic → generat
 - [x] A4: Add `@FieldBundle(name: String)` with `@Target(CLASS)`, `@Retention(SOURCE)`, full KDoc explaining that the bundle class carries `@ClassField`/`@FieldSpec` annotations
 - [x] A5: Update `@IncludeBundles` KDoc to reference `@FieldBundle` (step 14 prep)
 
-**File:** `annotations/src/main/kotlin/com/example/annotations/ClassAnnotations.kt`
+**File:** `annotations/src/main/kotlin/com/example/annotations/ClassSpec.kt`
 
 - [x] A6: Update `@param bundles` KDoc in `@ClassSpec` to say "Names of [@FieldBundle] classes whose field configs are merged into this spec"
 
@@ -156,8 +156,8 @@ object TimestampsBundle
 
 | File | Change |
 |---|---|
-| `annotations/.../BundleAnnotations.kt` | Replace 3 annotations with `@FieldBundle` |
-| `annotations/.../ClassAnnotations.kt` | Update `@param bundles` KDoc |
+| `annotations/.../IncludeBundles.kt` | Replace 3 annotations with `@FieldBundle` |
+| `annotations/.../ClassSpec.kt` | Update `@param bundles` KDoc |
 | `processor/.../BundleRegistry.kt` | **New file** |
 | `processor/.../KspAnnotationExtensions.kt` | Add `argStringList`, `resolveWithBundles`, `mergeAdditive` |
 | `processor/.../EntityGenerator.kt` | Add `bundleRegistry` field, swap call |

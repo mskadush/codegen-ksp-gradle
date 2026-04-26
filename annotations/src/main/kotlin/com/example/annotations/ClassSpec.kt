@@ -1,0 +1,58 @@
+package com.example.annotations
+
+import kotlin.reflect.KClass
+
+/**
+ * Drives generation of a single output class from a domain type.
+ *
+ * Apply multiple `@ClassSpec` annotations to the same spec class to generate several output
+ * classes from one domain type. Each instance is uniquely identified by [suffix], which is
+ * also used by [FieldSpec.for_] to scope field overrides to a specific output class.
+ *
+ * **Output-kind inference** (processor):
+ * - Any [FieldSpec] scoped to this suffix has non-empty [FieldSpec.validators] → a `validate()` /
+ *   `validateOrThrow()` pair is emitted on the class.
+ * - [partial] = `true` → all fields are nullable with `= null` defaults (update-request style).
+ * - Otherwise → plain data class with bidirectional mapper functions (`to<Suffix>()`/`toDomain()`).
+ *
+ * **Example**:
+ * ```kotlin
+ * @ClassSpec(for_ = User::class, suffix = "Entity",
+ *            bundles = [TimestampsBundle::class, UserEntityBundle::class],
+ *            bundleMergeStrategy = BundleMergeStrategy.MERGE_ADDITIVE,
+ *            annotations = [CustomAnnotation(Entity::class),
+ *                           CustomAnnotation(Table::class, members = ["name=\"users\""])])
+ * @ClassSpec(for_ = User::class, suffix = "Response")
+ * @ClassSpec(for_ = User::class, suffix = "CreateRequest", bundles = [TimestampsBundle::class])
+ * @ClassSpec(for_ = User::class, suffix = "UpdateRequest", partial = true)
+ * class UserSpec
+ * ```
+ *
+ * @param for_                   Domain class to generate from.
+ * @param suffix                 Appended to the domain class name to form the output class name.
+ *                               Also used as the discriminator by [FieldSpec.for_].
+ * @param prefix                 Prepended to the domain class name.
+ * @param partial                When `true`, every generated field is nullable with `= null`.
+ * @param bundles                [@FieldBundle] classes whose field configs are merged into this spec.
+ * @param bundleMergeStrategy    How to resolve conflicts when spec and bundle configure the same field.
+ * @param unmappedNestedStrategy What to do when a nested domain type has no explicit mapping.
+ * @param annotations            Annotations forwarded verbatim to the generated class.
+ * @param validateOnConstruct    When `true`, emits an `init { validateOrThrow() }` block so the
+ *                               object is validated immediately on construction. Useful when
+ *                               deserialisation frameworks call the constructor directly.
+ */
+@Target(AnnotationTarget.CLASS)
+@Retention(AnnotationRetention.SOURCE)
+@Repeatable
+annotation class ClassSpec(
+    val for_: KClass<*>,
+    val suffix: String = "",
+    val prefix: String = "",
+    val partial: Boolean = false,
+    val bundles: Array<KClass<*>> = [],
+    val bundleMergeStrategy: BundleMergeStrategy = BundleMergeStrategy.SPEC_WINS,
+    val unmappedNestedStrategy: UnmappedNestedStrategy = UnmappedNestedStrategy.FAIL,
+    val annotations: Array<CustomAnnotation> = [],
+    val validateOnConstruct: Boolean = false,
+)
+

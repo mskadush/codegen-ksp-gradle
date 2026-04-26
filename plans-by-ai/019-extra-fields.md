@@ -23,7 +23,7 @@ class that has no counterpart in the domain model).
 New repeatable annotation placed on spec classes alongside `@ClassField` / `@FieldSpec`:
 
 ```kotlin
-// annotations/ClassAnnotations.kt
+// annotations/ClassSpec.kt
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.SOURCE)
 @Repeatable
@@ -51,7 +51,7 @@ the default. No changes are required in `MapperGenerator`.
 
 ## Step-by-step
 
-### Step 1 — `annotations/ClassAnnotations.kt`
+### Step 1 — `annotations/ClassSpec.kt`
 
 Append `@AddField` after the existing `@FieldSpec` declaration.
 
@@ -163,7 +163,7 @@ The mapper omits it and Kotlin uses the default.
 
 | File | Change |
 |---|---|
-| `annotations/src/main/kotlin/com/example/annotations/ClassAnnotations.kt` | Add `@AddField` |
+| `annotations/src/main/kotlin/com/example/annotations/ClassSpec.kt` | Add `@AddField` |
 | `processor/src/main/kotlin/AnnotationConstants.kt` | Add `AN_ADD_FIELD`, constants |
 | `processor/src/main/kotlin/ClassGenerator.kt` | Emit extra fields in `generate()` |
 | `processor/src/main/kotlin/DomainMappingProcessorProvider.kt` | Validate extra fields in PASS 1d |

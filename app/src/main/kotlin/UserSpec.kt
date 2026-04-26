@@ -1,5 +1,4 @@
 import com.example.annotations.BundleMergeStrategy
-import com.example.annotations.ClassField
 import com.example.annotations.ClassSpec
 import com.example.annotations.CustomAnnotation
 import com.example.annotations.AddField
