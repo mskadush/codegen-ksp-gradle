@@ -1,10 +1,10 @@
-import com.example.annotations.BundleMergeStrategy
-import com.example.annotations.ClassSpec
-import com.example.annotations.CustomAnnotation
-import com.example.annotations.AddField
-import com.example.annotations.FieldSpec
-import com.example.annotations.NullableOverride
-import com.example.app.UpperCaseTransformer
+import za.skadush.codegen.gradle.annotations.BundleMergeStrategy
+import za.skadush.codegen.gradle.annotations.ClassSpec
+import za.skadush.codegen.gradle.annotations.CustomAnnotation
+import za.skadush.codegen.gradle.annotations.AddField
+import za.skadush.codegen.gradle.annotations.FieldSpec
+import za.skadush.codegen.gradle.annotations.NullableOverride
+import za.skadush.codegen.gradle.app.UpperCaseTransformer
 
 // ---------------------------------------------------------------------------
 // UserSpec — drives generation of all User-related output classes

@@ -1,4 +1,4 @@
-package com.example.annotations
+package za.skadush.codegen.gradle.annotations
 
 import org.intellij.lang.annotations.Language
 import kotlin.reflect.KClass

@@ -1,6 +1,6 @@
 import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.KSPLogger
-import com.example.annotations.NullableOverride
+import za.skadush.codegen.gradle.annotations.NullableOverride
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.ClassName
@@ -47,7 +47,7 @@ class MapperGenerator(
         val specRegistry = classResolver.registry
 
         val domainClassName  = ClassName(model.domainPackage, model.domainName)
-        val outputClassName  = ClassName("", outputName)
+        val outputClassName  = ClassName(model.resolvedOutputPackage, outputName)
         // Mapper method name derived from suffix: "Entity" → "toEntity()", "Response" → "toResponse()"
         val toOutputFunName  = "to${model.suffix}"
 
@@ -121,7 +121,7 @@ class MapperGenerator(
             .build()
 
         val fileName = "${outputName}Mappers"
-        FileSpec.builder(model.domainPackage, fileName)
+        FileSpec.builder(model.resolvedOutputPackage, fileName)
             .addFunction(toOutputFun)
             .addFunction(toDomainFun)
             .build()

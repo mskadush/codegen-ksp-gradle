@@ -15,6 +15,11 @@
  * limitations under the License.
  */
 
+import za.skadush.codegen.gradle.generated.UserCreateRequest
+import za.skadush.codegen.gradle.generated.toEntity
+import za.skadush.codegen.gradle.generated.toResponse
+import za.skadush.codegen.gradle.generated.toDomain
+
 /**
  * The main entrypoint.
  */

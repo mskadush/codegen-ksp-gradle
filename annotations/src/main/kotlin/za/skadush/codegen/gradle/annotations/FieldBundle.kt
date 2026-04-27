@@ -1,4 +1,4 @@
-package com.example.annotations
+package za.skadush.codegen.gradle.annotations
 
 /**
  * Marks a class as a bundle of field configurations that can be shared

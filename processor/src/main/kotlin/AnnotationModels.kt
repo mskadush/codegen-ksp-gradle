@@ -1,5 +1,5 @@
-import com.example.annotations.BundleMergeStrategy
-import com.example.annotations.UnmappedNestedStrategy
+import za.skadush.codegen.gradle.annotations.BundleMergeStrategy
+import za.skadush.codegen.gradle.annotations.UnmappedNestedStrategy
 import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
@@ -27,25 +27,31 @@ data class ClassSpecModel(
     val mergeStrategy: BundleMergeStrategy,
     val unmappedStrategy: UnmappedNestedStrategy,
     val classAnnotations: List<KSAnnotation>,
+    val outputPackage: String,
+    val processorDefaultPackage: String,
 ) {
     val outputName: String get() = "$prefix${domainClass.simpleName.asString()}$suffix"
     val domainName: String get() = domainClass.simpleName.asString()
     val domainPackage: String get() = domainClass.packageName.asString()
+    val resolvedOutputPackage: String get() =
+        outputPackage.ifBlank { processorDefaultPackage.ifBlank { domainPackage } }
 }
 
 /** Parses a raw [@ClassSpec] [KSAnnotation] into a [ClassSpecModel]. */
-internal fun KSAnnotation.toClassSpecModel(): ClassSpecModel {
+internal fun KSAnnotation.toClassSpecModel(processorDefaultPackage: String = ""): ClassSpecModel {
     val domainClass = (arguments.first { it.name?.asString() == PROP_FOR }.value as KSType)
         .declaration as KSClassDeclaration
     return ClassSpecModel(
-        domainClass         = domainClass,
-        suffix              = argString(PROP_SUFFIX),
-        prefix              = argString(PROP_PREFIX),
-        partial             = argBool(PROP_PARTIAL),
-        validateOnConstruct = argBool(PROP_VALIDATE_ON_CONSTRUCT),
-        bundleFQNs          = argKClassList(PROP_BUNDLES).mapNotNull { it.declaration.qualifiedName?.asString() },
-        mergeStrategy       = argBundleMergeStrategy(),
-        unmappedStrategy    = argUnmappedNestedStrategy(),
-        classAnnotations    = argAnnotationList(),
+        domainClass              = domainClass,
+        suffix                   = argString(PROP_SUFFIX),
+        prefix                   = argString(PROP_PREFIX),
+        partial                  = argBool(PROP_PARTIAL),
+        validateOnConstruct      = argBool(PROP_VALIDATE_ON_CONSTRUCT),
+        bundleFQNs               = argKClassList(PROP_BUNDLES).mapNotNull { it.declaration.qualifiedName?.asString() },
+        mergeStrategy            = argBundleMergeStrategy(),
+        unmappedStrategy         = argUnmappedNestedStrategy(),
+        classAnnotations         = argAnnotationList(),
+        outputPackage            = argString(PROP_OUTPUT_PACKAGE),
+        processorDefaultPackage  = processorDefaultPackage,
     )
 }

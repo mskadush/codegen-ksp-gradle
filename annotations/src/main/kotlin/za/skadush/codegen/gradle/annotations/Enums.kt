@@ -1,4 +1,4 @@
-package com.example.annotations
+package za.skadush.codegen.gradle.annotations
 
 /** Controls whether a generated field's nullability is overridden relative to the domain model. */
 enum class NullableOverride {

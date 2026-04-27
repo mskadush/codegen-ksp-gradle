@@ -1,4 +1,4 @@
-import com.example.annotations.FieldValidator
+import za.skadush.codegen.gradle.annotations.FieldValidator
 
 object EmailValidator : FieldValidator<String> {
     override val message = "must be a valid email address"

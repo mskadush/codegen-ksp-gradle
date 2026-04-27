@@ -1,4 +1,4 @@
-package com.example.annotations
+package za.skadush.codegen.gradle.annotations
 
 /**
  * A runtime validation rule for a single field value.
@@ -22,7 +22,7 @@ package com.example.annotations
  * @param T The type of value this validator accepts.
  */
 interface FieldValidator<in T> {
-    /** Human-readable failure message recorded in [com.example.runtime.ValidationError.message] when validation fails. */
+    /** Human-readable failure message recorded in [za.skadush.codegen.gradle.runtime.ValidationError.message] when validation fails. */
     val message: String
 
     /**

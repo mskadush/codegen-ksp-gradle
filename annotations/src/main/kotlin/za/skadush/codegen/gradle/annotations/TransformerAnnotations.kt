@@ -1,4 +1,4 @@
-package com.example.annotations
+package za.skadush.codegen.gradle.annotations
 
 /**
  * Registers a property within a [TransformerRegistry] class as a named transformer.

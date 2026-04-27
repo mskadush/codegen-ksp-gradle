@@ -1,4 +1,4 @@
-package com.example.annotations
+package za.skadush.codegen.gradle.annotations
 
 /**
  * Bidirectional converter between a domain type and a target (e.g. persistence) type.

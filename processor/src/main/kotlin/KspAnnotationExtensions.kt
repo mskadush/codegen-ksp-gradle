@@ -1,6 +1,6 @@
-import com.example.annotations.BundleMergeStrategy
-import com.example.annotations.NullableOverride
-import com.example.annotations.UnmappedNestedStrategy
+import za.skadush.codegen.gradle.annotations.BundleMergeStrategy
+import za.skadush.codegen.gradle.annotations.NullableOverride
+import za.skadush.codegen.gradle.annotations.UnmappedNestedStrategy
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSClassDeclaration

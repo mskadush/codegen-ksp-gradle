@@ -1,13 +1,13 @@
-import com.example.annotations.ClassField
-import com.example.annotations.ClassSpec
-import com.example.annotations.CustomAnnotation
-import com.example.annotations.AddField
-import com.example.annotations.FieldBundle
-import com.example.annotations.FieldSpec
-import com.example.annotations.IncludeBundles
-import com.example.annotations.NoOpTransformer
-import com.example.annotations.RegisterTransformer
-import com.example.annotations.TransformerRegistry
+import za.skadush.codegen.gradle.annotations.ClassField
+import za.skadush.codegen.gradle.annotations.ClassSpec
+import za.skadush.codegen.gradle.annotations.CustomAnnotation
+import za.skadush.codegen.gradle.annotations.AddField
+import za.skadush.codegen.gradle.annotations.FieldBundle
+import za.skadush.codegen.gradle.annotations.FieldSpec
+import za.skadush.codegen.gradle.annotations.IncludeBundles
+import za.skadush.codegen.gradle.annotations.NoOpTransformer
+import za.skadush.codegen.gradle.annotations.RegisterTransformer
+import za.skadush.codegen.gradle.annotations.TransformerRegistry
 
 // ── Annotation short names (for shortName.asString() comparisons) ─────────────
 internal val AN_CLASS_SPEC           = ClassSpec::class.simpleName!!
@@ -34,6 +34,7 @@ internal val PROP_BUNDLE_MERGE_STRATEGY = ClassSpec::bundleMergeStrategy.name
 internal val PROP_UNMAPPED_NESTED       = ClassSpec::unmappedNestedStrategy.name
 internal val PROP_ANNOTATIONS           = ClassSpec::annotations.name
 internal val PROP_VALIDATE_ON_CONSTRUCT = ClassSpec::validateOnConstruct.name
+internal val PROP_OUTPUT_PACKAGE        = ClassSpec::outputPackage.name
 
 // ── ClassField / FieldSpec shared property names ──────────────────────────────
 internal val PROP_PROPERTY        = ClassField::property.name

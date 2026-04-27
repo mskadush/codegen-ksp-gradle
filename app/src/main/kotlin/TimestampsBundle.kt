@@ -1,7 +1,7 @@
-import com.example.annotations.CustomAnnotation
-import com.example.annotations.FieldBundle
-import com.example.annotations.FieldSpec
-import com.example.annotations.NullableOverride
+import za.skadush.codegen.gradle.annotations.CustomAnnotation
+import za.skadush.codegen.gradle.annotations.FieldBundle
+import za.skadush.codegen.gradle.annotations.FieldSpec
+import za.skadush.codegen.gradle.annotations.NullableOverride
 
 @FieldBundle
 // Entity: Jakarta persistence annotations

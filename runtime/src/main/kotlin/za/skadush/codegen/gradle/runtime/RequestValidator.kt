@@ -1,10 +1,10 @@
-package com.example.runtime
+package za.skadush.codegen.gradle.runtime
 
 /**
  * Custom validation hook invoked after a request object is constructed.
  *
  * Implement this interface and reference the class via the spec's validator parameter
- * to run cross-field or business-rule validation that goes beyond single-field [com.example.annotations.FieldValidator] checks.
+ * to run cross-field or business-rule validation that goes beyond single-field [za.skadush.codegen.gradle.annotations.FieldValidator] checks.
  *
  * @param T The generated request class being validated.
  */

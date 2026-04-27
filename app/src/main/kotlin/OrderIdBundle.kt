@@ -1,6 +1,6 @@
-import com.example.annotations.CustomAnnotation
-import com.example.annotations.FieldBundle
-import com.example.annotations.FieldSpec
+import za.skadush.codegen.gradle.annotations.CustomAnnotation
+import za.skadush.codegen.gradle.annotations.FieldBundle
+import za.skadush.codegen.gradle.annotations.FieldSpec
 
 /**
  * Leaf bundle: marks the primary key of any Order-style entity with JPA @Id and @GeneratedValue.

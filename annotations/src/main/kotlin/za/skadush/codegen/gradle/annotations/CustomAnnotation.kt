@@ -1,4 +1,4 @@
-package com.example.annotations
+package za.skadush.codegen.gradle.annotations
 
 /**
  * Represents an arbitrary annotation to be emitted on a generated class or field.

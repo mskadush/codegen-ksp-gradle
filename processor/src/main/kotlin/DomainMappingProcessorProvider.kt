@@ -26,6 +26,7 @@ class DomainMappingProcessorProvider : SymbolProcessorProvider {
     override fun create(environment: SymbolProcessorEnvironment) = object : SymbolProcessor {
 
         private val logger = environment.logger
+        private val defaultPackage  = environment.options["codegen.defaultPackage"] ?: ""
         private val classResolver   = ClassResolver(logger)
         private val classGenerator  = ClassGenerator(environment.codeGenerator, logger, classResolver)
         private val mapperGenerator = MapperGenerator(environment.codeGenerator, logger, classResolver)
@@ -38,8 +39,8 @@ class DomainMappingProcessorProvider : SymbolProcessorProvider {
             val transformerRegistry = transformerRegistryScanner.scan(resolver)
 
             // --- PASS 1: Build SpecRegistry + collect domain declarations for cycle detection ---
-            // targets: domainFQN → (suffix → outputName)
-            val targetsBuilder   = mutableMapOf<String, MutableMap<String, String>>()
+            // targets: domainFQN → (suffix → (outputPackage, outputName))
+            val targetsBuilder   = mutableMapOf<String, MutableMap<String, Pair<String, String>>>()
             // domain FQN → declaration, used only for cycle detection on non-partial outputs
             val nonPartialDomainDecls = mutableMapOf<String, KSClassDeclaration>()
 
@@ -47,9 +48,10 @@ class DomainMappingProcessorProvider : SymbolProcessorProvider {
                 .filterIsInstance<KSClassDeclaration>()
                 .forEach { spec ->
                     spec.classSpecAnnotations().forEach { csAnn ->
-                        val model = csAnn.toClassSpecModel()
+                        val model = csAnn.toClassSpecModel(defaultPackage)
                         val fqn   = model.domainClass.qualifiedName?.asString() ?: return@forEach
-                        targetsBuilder.getOrPut(fqn) { mutableMapOf() }[model.suffix] = model.outputName
+                        targetsBuilder.getOrPut(fqn) { mutableMapOf() }[model.suffix] =
+                            model.resolvedOutputPackage to model.outputName
                         if (!model.partial) nonPartialDomainDecls[fqn] = model.domainClass
                     }
                 }
@@ -98,7 +100,7 @@ class DomainMappingProcessorProvider : SymbolProcessorProvider {
                 .filterIsInstance<KSClassDeclaration>()
                 .forEach { spec ->
                     spec.classSpecAnnotations().forEach { csAnn ->
-                        val model = csAnn.toClassSpecModel()
+                        val model = csAnn.toClassSpecModel(defaultPackage)
                         classGenerator.generate(spec, model)
                         if (!model.partial) {
                             mapperGenerator.generate(spec, model, transformerRegistry)
@@ -207,7 +209,7 @@ private fun KSClassDeclaration.validatePropertyRefs(
         }
 
         classSpecAnnotations().forEach { csAnn ->
-            val model = csAnn.toClassSpecModel()
+            val model = csAnn.toClassSpecModel()  // defaultPackage not needed for validation
             if (model.suffix !in forSuffixes) return@forEach
             if (!model.partial && !isNullable && default.isBlank()) {
                 logger.error(

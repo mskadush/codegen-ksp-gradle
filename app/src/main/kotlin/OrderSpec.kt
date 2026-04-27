@@ -1,5 +1,5 @@
-import com.example.annotations.BundleMergeStrategy
-import com.example.annotations.ClassSpec
+import za.skadush.codegen.gradle.annotations.BundleMergeStrategy
+import za.skadush.codegen.gradle.annotations.ClassSpec
 
 /**
  * Spec for Order. Uses [OrderBaseBundle] which transitively includes [OrderIdBundle] via @IncludeBundles,

@@ -1,4 +1,4 @@
-package com.example.runtime
+package za.skadush.codegen.gradle.runtime
 
 /**
  * Identifies a single field on a request object.
@@ -59,7 +59,7 @@ class ValidationException(val errors: List<ValidationError>)
 /**
  * Accumulates validation results for a request object and produces a [ValidationResult].
  *
- * Generated `validate()` methods open a context, call `ensure*` for every applicable [com.example.annotations.FieldValidator],
+ * Generated `validate()` methods open a context, call `ensure*` for every applicable [za.skadush.codegen.gradle.annotations.FieldValidator],
  * then return [build]. Call the methods directly when writing hand-crafted validators.
  *
  * ```kotlin

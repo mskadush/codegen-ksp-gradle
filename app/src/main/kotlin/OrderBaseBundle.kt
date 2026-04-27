@@ -1,5 +1,5 @@
-import com.example.annotations.FieldBundle
-import com.example.annotations.IncludeBundles
+import za.skadush.codegen.gradle.annotations.FieldBundle
+import za.skadush.codegen.gradle.annotations.IncludeBundles
 
 /**
  * Wrapper bundle for Order entities. Pulls in [OrderIdBundle] transitively via

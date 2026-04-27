@@ -1,10 +1,9 @@
-import com.example.annotations.UnmappedNestedStrategy
+import za.skadush.codegen.gradle.annotations.UnmappedNestedStrategy
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.Modifier
-import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 
 /**
@@ -116,7 +115,7 @@ class ClassResolver(private val logger: KSPLogger) {
             if (targetName != null) {
                 return FieldKind.MappedCollection(
                     targetName = targetName,
-                    targetClassName = ClassName("", targetName),
+                    targetClassName = registry.lookupNestedClassName(elemFqn, suffix)!!,
                     collectionFQN = field.originalType.declaration.qualifiedName!!.asString(),
                 )
             }
@@ -137,7 +136,7 @@ class ClassResolver(private val logger: KSPLogger) {
         if (targetName != null) {
             return FieldKind.MappedObject(
                 targetName = targetName,
-                targetClassName = ClassName("", targetName),
+                targetClassName = registry.lookupNestedClassName(fqn, suffix)!!,
             )
         }
 

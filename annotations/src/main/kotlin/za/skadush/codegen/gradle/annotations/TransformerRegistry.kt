@@ -1,4 +1,4 @@
-package com.example.annotations
+package za.skadush.codegen.gradle.annotations
 
 /**
  * Marks a class as a registry of named [FieldTransformer] instances.

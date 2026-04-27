@@ -1,7 +1,7 @@
-package com.example.app
+package za.skadush.codegen.gradle.app
 
-import com.example.annotations.RegisterTransformer
-import com.example.annotations.TransformerRegistry
+import za.skadush.codegen.gradle.annotations.RegisterTransformer
+import za.skadush.codegen.gradle.annotations.TransformerRegistry
 
 @TransformerRegistry
 object AppTransformerRegistry {

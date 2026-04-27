@@ -1,4 +1,4 @@
-package com.example.annotations
+package za.skadush.codegen.gradle.annotations
 
 import kotlin.reflect.KClass
 
@@ -40,6 +40,9 @@ import kotlin.reflect.KClass
  * @param validateOnConstruct    When `true`, emits an `init { validateOrThrow() }` block so the
  *                               object is validated immediately on construction. Useful when
  *                               deserialisation frameworks call the constructor directly.
+ * @param outputPackage          Package for the generated class and its mapper file.
+ *                               Precedence: this value → `codegen.defaultPackage` KSP option →
+ *                               domain class package (existing behaviour when both are unset).
  */
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.SOURCE)
@@ -54,5 +57,6 @@ annotation class ClassSpec(
     val unmappedNestedStrategy: UnmappedNestedStrategy = UnmappedNestedStrategy.FAIL,
     val annotations: Array<CustomAnnotation> = [],
     val validateOnConstruct: Boolean = false,
+    val outputPackage: String = "",
 )
 

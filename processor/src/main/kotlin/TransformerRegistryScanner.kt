@@ -6,7 +6,7 @@ import com.google.devtools.ksp.symbol.KSClassDeclaration
  * Scans all `@TransformerRegistry`-annotated objects and builds a name → reference map.
  *
  * Each property annotated with `@RegisterTransformer(name)` inside a registry object is
- * recorded as `name → "com.example.app.MyRegistry.myProp"`. The resulting map is passed
+ * recorded as `name → "za.skadush.codegen.gradle.app.MyRegistry.myProp"`. The resulting map is passed
  * to [MapperGenerator] so that `transformerRef = "name"` in field specs can be resolved
  * to an actual property reference.
  */
@@ -14,7 +14,7 @@ class TransformerRegistryScanner(private val logger: KSPLogger) {
 
     /**
      * Returns a map of transformer name → fully-qualified property reference
-     * (e.g. `"upperCase"` → `"com.example.app.AppTransformerRegistry.upperCase"`).
+     * (e.g. `"upperCase"` → `"za.skadush.codegen.gradle.app.AppTransformerRegistry.upperCase"`).
      */
     fun scan(resolver: Resolver): Map<String, String> {
         val registry = mutableMapOf<String, String>()

@@ -1,6 +1,6 @@
-package com.example.app
+package za.skadush.codegen.gradle.app
 
-import com.example.annotations.FieldTransformer
+import za.skadush.codegen.gradle.annotations.FieldTransformer
 
 /** Converts a [String] field to uppercase when writing to the entity/DTO and back to lowercase when reading. */
 class UpperCaseTransformer : FieldTransformer<String, String> {

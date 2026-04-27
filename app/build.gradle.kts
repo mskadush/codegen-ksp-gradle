@@ -12,6 +12,10 @@ repositories {
     mavenCentral()
 }
 
+ksp {
+    arg("codegen.defaultPackage", "za.skadush.codegen.gradle.generated")
+}
+
 dependencies {
     implementation(project(":annotations"))
     implementation(project(":runtime"))

@@ -1,10 +1,10 @@
-import com.example.runtime.FieldRef
-import com.example.runtime.ValidationContext
-import com.example.runtime.ValidationException
-import com.example.runtime.ValidationResult
+import za.skadush.codegen.gradle.runtime.FieldRef
+import za.skadush.codegen.gradle.runtime.ValidationContext
+import za.skadush.codegen.gradle.runtime.ValidationException
+import za.skadush.codegen.gradle.runtime.ValidationResult
 import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.KSPLogger
-import com.example.annotations.NullableOverride
+import za.skadush.codegen.gradle.annotations.NullableOverride
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.ClassName
@@ -163,7 +163,7 @@ class ClassGenerator(
             imports += VALIDATION_EXCEPTION.packageName to VALIDATION_EXCEPTION.simpleName
         }
 
-        val fileBuilder = FileSpec.builder("", outputName)
+        val fileBuilder = FileSpec.builder(model.resolvedOutputPackage, outputName)
         imports.forEach { (pkg, name) -> fileBuilder.addImport(pkg, name) }
         fileBuilder.addType(classBuilder.build())
             .build()
