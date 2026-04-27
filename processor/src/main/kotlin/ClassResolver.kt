@@ -1,5 +1,6 @@
 import com.example.annotations.UnmappedNestedStrategy
 import com.google.devtools.ksp.processing.KSPLogger
+import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.Modifier
@@ -34,7 +35,7 @@ class ClassResolver(private val logger: KSPLogger) {
      */
     fun resolve(cls: KSClassDeclaration): List<FieldModel>? {
         if (Modifier.DATA !in cls.modifiers) {
-            logger.error("${cls.simpleName.asString()} is not a data class — @EntitySpec requires a data class")
+            logger.error("${cls.simpleName.asString()} is not a data class — @ClassSpec requires a data class")
             return null
         }
         val ctor = cls.primaryConstructor ?: run {
@@ -127,6 +128,10 @@ class ClassResolver(private val logger: KSPLogger) {
         // Standard library types are always primitive
         if (fqn.startsWith("kotlin.") || fqn.startsWith("java.")) return FieldKind.Primitive
 
+        // Enums are atomic — there is nothing to generate for them
+        if ((field.originalType.declaration as? KSClassDeclaration)?.classKind == ClassKind.ENUM_CLASS)
+            return FieldKind.Primitive
+
         // Look up the nested type for the same suffix
         val targetName = registry.lookupNested(fqn, suffix)
         if (targetName != null) {
@@ -161,6 +166,7 @@ class ClassResolver(private val logger: KSPLogger) {
     private fun isNonPrimitiveUnmapped(field: FieldModel): Boolean {
         val fqn = field.originalType.declaration.qualifiedName?.asString() ?: return false
         if (fqn.startsWith("kotlin.") || fqn.startsWith("java.")) return false
+        if ((field.originalType.declaration as? KSClassDeclaration)?.classKind == ClassKind.ENUM_CLASS) return false
         if (registry.targets.containsKey(fqn)) return false
         if (extractCollectionElement(field.originalType) != null) return false
         return true
