@@ -10,3 +10,33 @@ subprojects {
         }
     }
 }
+
+configure(listOf(project(":annotations"), project(":runtime"), project(":processor"))) {
+    apply(plugin = "maven-publish")
+
+    afterEvaluate {
+        extensions.configure<org.gradle.api.plugins.JavaPluginExtension> {
+            withSourcesJar()
+        }
+        configure<PublishingExtension> {
+            publications {
+                create<MavenPublication>("maven") {
+                    from(components["java"])
+                    groupId = rootProject.group.toString()
+                    artifactId = "codegen-${project.name}"
+                    version = project.version.toString()
+                }
+            }
+            repositories {
+                maven {
+                    name = "GitHubPackages"
+                    url = uri(rootProject.findProperty("githubPackagesUrl").toString())
+                    credentials {
+                        username = System.getenv("GITHUB_ACTOR") ?: ""
+                        password = System.getenv("GITHUB_TOKEN") ?: ""
+                    }
+                }
+            }
+        }
+    }
+}
