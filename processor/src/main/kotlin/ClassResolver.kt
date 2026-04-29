@@ -151,9 +151,20 @@ class ClassResolver(private val logger: KSPLogger) {
                 val simpleName = field.originalType.declaration.simpleName.asString()
                 logger.error(
                     "$simpleName has no spec for suffix '$suffix'. " +
-                    "Declare one or set unmappedNestedStrategy = INLINE or EXCLUDE"
+                    "Declare one or set unmappedNestedStrategy = INLINE, EXCLUDE, or AUTO_GENERATE"
                 )
                 null
+            }
+            // AUTO_GENERATE: the BFS discovery pass in DomainMappingProcessorProvider pre-populates
+            // the registry with all auto-generated types before Pass 2 runs. Reaching this branch
+            // means the type was NOT picked up by discovery (e.g., not a data class, or the BFS
+            // was seeded from a different suffix). Treat as primitive to avoid a spurious error.
+            UnmappedNestedStrategy.AUTO_GENERATE -> {
+                logger.warn(
+                    "AUTO_GENERATE: '${field.originalType.declaration.simpleName.asString()}' " +
+                    "was not pre-registered for suffix '$suffix' — treating as primitive"
+                )
+                FieldKind.Primitive
             }
         }
     }
@@ -163,12 +174,10 @@ class ClassResolver(private val logger: KSPLogger) {
      * meaning it is a candidate for INLINE expansion.
      */
     private fun isNonPrimitiveUnmapped(field: FieldModel): Boolean {
-        val fqn = field.originalType.declaration.qualifiedName?.asString() ?: return false
-        if (fqn.startsWith("kotlin.") || fqn.startsWith("java.")) return false
-        if ((field.originalType.declaration as? KSClassDeclaration)?.classKind == ClassKind.ENUM_CLASS) return false
-        if (registry.targets.containsKey(fqn)) return false
         if (extractCollectionElement(field.originalType) != null) return false
-        return true
+        if (field.originalType.toAutoGenerateCandidate() == null) return false
+        val fqn = field.originalType.declaration.qualifiedName?.asString() ?: return false
+        return !registry.targets.containsKey(fqn)
     }
 
     /**

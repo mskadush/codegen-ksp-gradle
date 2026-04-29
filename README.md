@@ -157,6 +157,40 @@ object OrderBaseBundle
 
 ---
 
+## Nested type strategies
+
+When a domain class has a field whose type is another domain class, `unmappedNestedStrategy` controls what happens:
+
+| Value | Behaviour |
+|---|---|
+| `FAIL` _(default)_ | Compile-time error if a nested type has no `@ClassSpec` for the same suffix. |
+| `INLINE` | Flatten the nested object's fields into the parent class, prefixed by the field name. |
+| `EXCLUDE` | Silently omit the nested field from the generated class. |
+| `AUTO_GENERATE` | Automatically generate a passthrough output class for the nested type, using the same suffix, prefix, and output package. Recurses transitively through the nested type's own fields. |
+
+`AUTO_GENERATE` eliminates boilerplate spec files for domain types that need no customisation:
+
+```kotlin
+// Order.kt
+data class Order(val id: Long, val address: Address, val status: OrderStatus)
+
+// AddressSpec.kt — no longer needed
+// @ClassSpec(for_ = Address::class, suffix = "Entity")
+// object AddressSpec
+
+// OrderSpec.kt — Address → AddressEntity is auto-generated
+@ClassSpec(
+    for_ = Order::class,
+    suffix = "Entity",
+    unmappedNestedStrategy = UnmappedNestedStrategy.AUTO_GENERATE,
+)
+object OrderSpec
+```
+
+Explicit `@ClassSpec` declarations always win — if `Address` has its own spec, that spec is used as-is. Auto-generated types are never `partial`; that flag must be declared explicitly.
+
+---
+
 ## Validation
 
 Validation logic lives in `FieldValidator` implementations you define — no baked-in expression templates.

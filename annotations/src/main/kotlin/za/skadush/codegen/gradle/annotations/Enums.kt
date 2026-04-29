@@ -35,7 +35,19 @@ enum class UnmappedNestedStrategy {
     /** Flatten the nested object's fields into the parent class with an optional prefix. */
     INLINE,
     /** Silently omit the nested field from the generated class. */
-    EXCLUDE
+    EXCLUDE,
+    /**
+     * Automatically generate a passthrough output class for the nested type using the same suffix,
+     * prefix, and output package as the triggering spec. Recurses transitively through the nested
+     * type's own constructor parameters.
+     *
+     * Explicit specs always win: if a nested type already has a `@ClassSpec` for the same suffix,
+     * that spec is used as-is and no synthetic class is generated.
+     *
+     * Auto-generated classes are never `partial` — they always produce a full bidirectional mapper.
+     * `partial = true` must be declared explicitly on a real `@ClassSpec`.
+     */
+    AUTO_GENERATE
 }
 
 

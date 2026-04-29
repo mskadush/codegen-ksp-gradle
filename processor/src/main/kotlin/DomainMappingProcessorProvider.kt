@@ -1,12 +1,16 @@
+import za.skadush.codegen.gradle.annotations.BundleMergeStrategy
+import za.skadush.codegen.gradle.annotations.UnmappedNestedStrategy
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessor
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.processing.SymbolProcessorProvider
+import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
+import com.google.devtools.ksp.symbol.Modifier
 
 /**
  * KSP entry point for the domain-mapping code generator.
@@ -43,6 +47,8 @@ class DomainMappingProcessorProvider : SymbolProcessorProvider {
             val targetsBuilder   = mutableMapOf<String, MutableMap<String, Pair<String, String>>>()
             // domain FQN → declaration, used only for cycle detection on non-partial outputs
             val nonPartialDomainDecls = mutableMapOf<String, KSClassDeclaration>()
+            // all explicit (spec, model) pairs — used to seed AUTO_GENERATE discovery
+            val explicitModels = mutableListOf<Pair<KSClassDeclaration, ClassSpecModel>>()
 
             resolver.getSymbolsWithAnnotation(FQN_CLASS_SPEC)
                 .filterIsInstance<KSClassDeclaration>()
@@ -53,8 +59,67 @@ class DomainMappingProcessorProvider : SymbolProcessorProvider {
                         targetsBuilder.getOrPut(fqn) { mutableMapOf() }[model.suffix] =
                             model.resolvedOutputPackage to model.outputName
                         if (!model.partial) nonPartialDomainDecls[fqn] = model.domainClass
+                        explicitModels.add(spec to model)
                     }
                 }
+
+            // --- PASS 1a-bis: AUTO_GENERATE BFS discovery ---
+            // For every explicit spec that uses AUTO_GENERATE, walk the domain class constructor
+            // parameters transitively and generate passthrough specs for unregistered domain types.
+            // Synthetic specs inherit suffix, prefix, and outputPackage from the triggering parent.
+            val syntheticModels = mutableListOf<ClassSpecModel>()
+
+            data class BfsEntry(
+                val domainClass: KSClassDeclaration,
+                val suffix: String,
+                val prefix: String,
+                val outputPackage: String,
+            )
+
+            val bfsQueue   = ArrayDeque<BfsEntry>()
+            val bfsVisited = mutableSetOf<String>() // "$fqn:$suffix"
+
+            fun enqueueIfNew(cls: KSClassDeclaration, suffix: String, prefix: String, outputPackage: String) {
+                val fqn = cls.qualifiedName?.asString() ?: return
+                if (targetsBuilder[fqn]?.containsKey(suffix) == true) return
+                if (bfsVisited.add("$fqn:$suffix")) bfsQueue.add(BfsEntry(cls, suffix, prefix, outputPackage))
+            }
+
+            // Seed BFS from explicit AUTO_GENERATE specs
+            for ((_, model) in explicitModels) {
+                if (model.unmappedStrategy != UnmappedNestedStrategy.AUTO_GENERATE) continue
+                collectNestedDomainTypes(model.domainClass).forEach { nested ->
+                    enqueueIfNew(nested, model.suffix, model.prefix, model.resolvedOutputPackage)
+                }
+            }
+
+            // BFS expansion
+            while (bfsQueue.isNotEmpty()) {
+                val (domainClass, suffix, prefix, outputPkg) = bfsQueue.removeFirst()
+                val fqn = domainClass.qualifiedName?.asString() ?: continue
+                val outputName = "$prefix${domainClass.simpleName.asString()}$suffix"
+
+                targetsBuilder.getOrPut(fqn) { mutableMapOf() }[suffix] = outputPkg to outputName
+                nonPartialDomainDecls[fqn] = domainClass
+
+                syntheticModels.add(ClassSpecModel(
+                    domainClass             = domainClass,
+                    suffix                  = suffix,
+                    prefix                  = prefix,
+                    partial                 = false,
+                    validateOnConstruct     = false,
+                    bundleFQNs              = emptyList(),
+                    mergeStrategy           = BundleMergeStrategy.SPEC_WINS,
+                    unmappedStrategy        = UnmappedNestedStrategy.AUTO_GENERATE,
+                    classAnnotations        = emptyList(),
+                    outputPackage           = outputPkg,
+                    processorDefaultPackage = "",
+                ))
+
+                collectNestedDomainTypes(domainClass).forEach { nested ->
+                    enqueueIfNew(nested, suffix, prefix, outputPkg)
+                }
+            }
 
             val specRegistry = SpecRegistry(targetsBuilder.mapValues { it.value.toMap() })
 
@@ -108,6 +173,12 @@ class DomainMappingProcessorProvider : SymbolProcessorProvider {
                     }
                 }
 
+            // Generate auto-discovered types (domain class acts as its own spec — no field overrides)
+            for (model in syntheticModels) {
+                classGenerator.generate(model.domainClass, model)
+                mapperGenerator.generate(model.domainClass, model, transformerRegistry)
+            }
+
             return emptyList()
         }
 
@@ -116,7 +187,41 @@ class DomainMappingProcessorProvider : SymbolProcessorProvider {
             if (fqn != "kotlin.collections.List" && fqn != "kotlin.collections.Set") return null
             return type.arguments.firstOrNull()?.type?.resolve()
         }
+
+        /**
+         * Returns all direct constructor-parameter types of [cls] that are candidates for
+         * AUTO_GENERATE: non-stdlib, non-enum data classes. Does not filter by registry — the
+         * caller is responsible for deduplication.
+         */
+        private fun collectNestedDomainTypes(cls: KSClassDeclaration): List<KSClassDeclaration> {
+            val ctor = cls.primaryConstructor ?: return emptyList()
+            return ctor.parameters.flatMap { param ->
+                val rawType = param.type.resolve()
+                val effectiveType = extractCollectionElement(rawType) ?: rawType
+                listOfNotNull(effectiveType.toAutoGenerateCandidate())
+            }
+        }
     }
+}
+
+// ---------------------------------------------------------------------------
+// AUTO_GENERATE type predicate
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns this type's [KSClassDeclaration] if it is a candidate for AUTO_GENERATE:
+ * a non-stdlib, non-enum data class. Returns `null` otherwise.
+ *
+ * Used by both the BFS discovery pass in [DomainMappingProcessorProvider] and by
+ * [ClassResolver] to ensure consistent classification.
+ */
+internal fun KSType.toAutoGenerateCandidate(): KSClassDeclaration? {
+    val decl = declaration as? KSClassDeclaration ?: return null
+    val fqn  = decl.qualifiedName?.asString() ?: return null
+    if (fqn.startsWith("kotlin.") || fqn.startsWith("java.")) return null
+    if (decl.classKind == ClassKind.ENUM_CLASS) return null
+    if (Modifier.DATA !in decl.modifiers) return null
+    return decl
 }
 
 // ---------------------------------------------------------------------------
