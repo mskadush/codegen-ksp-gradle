@@ -125,7 +125,7 @@ class MapperGenerator(
             .addFunction(toOutputFun)
             .addFunction(toDomainFun)
             .build()
-            .writeTo(codeGenerator, aggregating = false)
+            .writeTo(codeGenerator, aggregating = false, originatingKSFiles = listOfNotNull(spec.containingFile))
 
         logger.info("MapperGenerator: generated $fileName.kt with $toOutputFunName() and toDomain()")
     }

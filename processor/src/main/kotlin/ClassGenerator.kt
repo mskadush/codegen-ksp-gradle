@@ -167,7 +167,7 @@ class ClassGenerator(
         imports.forEach { (pkg, name) -> fileBuilder.addImport(pkg, name) }
         fileBuilder.addType(classBuilder.build())
             .build()
-            .writeTo(codeGenerator, aggregating = false)
+            .writeTo(codeGenerator, aggregating = false, originatingKSFiles = listOfNotNull(spec.containingFile))
 
         logger.info("ClassGenerator: generated $outputName (partial=${model.partial}${if (hasValidation) ", with validation" else ""})")
     }
