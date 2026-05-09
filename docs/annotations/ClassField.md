@@ -17,7 +17,6 @@ For output-kind-specific params (rename, validators) or when you only want to ta
 | `exclude` | `Boolean` | `false` | When `true`, omits this field from **every** generated output class. |
 | `nullable` | `NullableOverride` | `UNSET` | Nullability override. `UNSET` preserves the domain type's nullability. See [`NullableOverride`](SupportingTypes.md#nullableoverride). |
 | `transformer` | `KClass<out FieldTransformer<*, *>>` | `NoOpTransformer::class` | Transformer applied to this field in all outputs. |
-| `transformerRef` | `String` | `""` | Named transformer from a [`@TransformerRegistry`](TransformerRegistry.md). Wins over `transformer` when both are set. |
 | `annotations` | `Array<CustomAnnotation>` | `[]` | Annotations forwarded to this field in every output class. See [`@CustomAnnotation`](SupportingTypes.md#customannotation). |
 
 ---
@@ -43,7 +42,7 @@ object UserSpec
 ```kotlin
 @ClassField(
     property = "name",
-    transformerRef = "upperCase"   // registered in @TransformerRegistry
+    transformer = UpperCaseTransformer::class
 )
 object UserSpec
 ```
@@ -65,7 +64,7 @@ object UserSpec
 ```kotlin
 @ClassField(property = "passwordHash", exclude = true)
 @ClassField(property = "createdAt",    nullable = NullableOverride.YES)
-@ClassField(property = "name",         transformerRef = "upperCase")
+@ClassField(property = "name",         transformer = UpperCaseTransformer::class)
 object UserSpec
 ```
 
@@ -76,8 +75,8 @@ object UserSpec
 When both `@ClassField` and `@FieldSpec` configure the same property:
 
 ```
-@FieldSpec(for_ = ["Entity"], property = "name", rename = "userName")   // rename only for Entity
-@ClassField(property = "name", transformerRef = "upperCase")             // overridden for Entity suffix
+@FieldSpec(for_ = ["Entity"], property = "name", rename = "userName")        // rename only for Entity
+@ClassField(property = "name", transformer = UpperCaseTransformer::class)    // applies across outputs
 ```
 
 `@FieldSpec` values win for every parameter where the `@FieldSpec` provides a non-default value.
@@ -87,5 +86,4 @@ When both `@ClassField` and `@FieldSpec` configure the same property:
 ## See also
 
 - [`@FieldSpec`](FieldSpec.md) — per-output, output-kind-specific overrides
-- [`@TransformerRegistry`](TransformerRegistry.md) — named transformer registries
 - [`NullableOverride`](SupportingTypes.md#nullableoverride)

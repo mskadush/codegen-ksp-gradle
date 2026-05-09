@@ -21,7 +21,6 @@ import kotlin.reflect.KClass
  * @param exclude         When `true`, omits this field from every generated output class.
  * @param nullable        Nullability override; [NullableOverride.UNSET] preserves the source type.
  * @param transformer     [FieldTransformer] class for value conversion.
- * @param transformerRef  Named transformer from a [TransformerRegistry]; wins over [transformer].
  * @param annotations     Annotations forwarded to the generated field in every output class.
  */
 @Target(AnnotationTarget.CLASS)
@@ -32,6 +31,5 @@ annotation class ClassField(
     val exclude: Boolean = false,
     val nullable: NullableOverride = NullableOverride.UNSET,
     val transformer: KClass<out FieldTransformer<*, *>> = NoOpTransformer::class,
-    val transformerRef: String = "",
     val annotations: Array<CustomAnnotation> = []
 )

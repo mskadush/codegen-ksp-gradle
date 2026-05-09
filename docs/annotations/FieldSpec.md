@@ -17,7 +17,6 @@ A **per-output field override**, scoped to one or more [`@ClassSpec`](ClassSpec.
 | `exclude` | `Boolean` | `false` | Omit this field from the named output(s) only. |
 | `nullable` | `NullableOverride` | `UNSET` | Nullability override for the named output(s). See [`NullableOverride`](SupportingTypes.md#nullableoverride). |
 | `transformer` | `KClass<out FieldTransformer<*, *>>` | `NoOpTransformer::class` | Transformer class for value conversion. |
-| `transformerRef` | `String` | `""` | Named transformer from a [`@TransformerRegistry`](TransformerRegistry.md). Wins over `transformer`. |
 | `annotations` | `Array<CustomAnnotation>` | `[]` | Annotations forwarded to the generated field in the named output(s). |
 | `rename` | `String` | `""` | Alternative field name in the generated class. |
 | `validators` | `Array<KClass<out FieldValidator<*>>>` | `[]` | Runtime validators applied to this field. Each must be a singleton `object` implementing [`FieldValidator`](FieldValidator.md). Presence of any validator causes the processor to emit `validate()` and `validateOrThrow()` on the generated class. |
@@ -72,11 +71,11 @@ A **per-output field override**, scoped to one or more [`@ClassSpec`](ClassSpec.
 @FieldSpec(for_ = ["Entity"], property = "id", nullable = NullableOverride.YES)
 ```
 
-### Named transformer on a specific output
+### Transformer on a specific output
 
 ```kotlin
 // Apply UpperCaseTransformer only on the response, not the entity
-@FieldSpec(for_ = ["Response"], property = "name", transformerRef = "upperCase")
+@FieldSpec(for_ = ["Response"], property = "name", transformer = UpperCaseTransformer::class)
 ```
 
 ### Full example from `UserSpec`
@@ -117,7 +116,7 @@ A **per-output field override**, scoped to one or more [`@ClassSpec`](ClassSpec.
         members = ["name=\"user_name\""]
     )]
 )
-@FieldSpec(for_ = ["Response"], property = "name", transformerRef = "upperCase")
+@FieldSpec(for_ = ["Response"], property = "name", transformer = UpperCaseTransformer::class)
 @FieldSpec(
     for_ = ["CreateRequest", "UpdateRequest"],
     property = "name",

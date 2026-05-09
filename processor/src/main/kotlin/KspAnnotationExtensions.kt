@@ -22,7 +22,6 @@ data class MergedOverride(
     val property: String,
     val exclude: Boolean,
     val nullable: NullableOverride,
-    val transformerRef: String,
     val transformerFQN: String?,
     /** Raw CustomAnnotation KSAnnotations from @ClassField.annotations */
     val classLevelAnn: List<KSAnnotation>,
@@ -67,7 +66,6 @@ internal fun KSClassDeclaration.mergedFieldOverrides(suffix: String): Map<String
             property      = property,
             exclude       = fs?.argBool(PROP_EXCLUDE) ?: cf?.argBool(PROP_EXCLUDE) ?: false,
             nullable      = fs?.argNullableOverride() ?: cf?.argNullableOverride() ?: NullableOverride.UNSET,
-            transformerRef= fs?.argString(PROP_TRANSFORMER_REF) ?: cf?.argString(PROP_TRANSFORMER_REF) ?: "",
             transformerFQN= fs?.argKClassFQN(PROP_TRANSFORMER) ?: cf?.argKClassFQN(PROP_TRANSFORMER),
             classLevelAnn = cf?.argAnnotationList() ?: emptyList(),
             fieldLevelAnn = fs?.argAnnotationList() ?: emptyList(),
@@ -133,7 +131,7 @@ internal fun KSClassDeclaration.resolveWithBundles(
  * Merges spec and bundle overrides property-by-property, preferring non-default values from
  * [spec] and filling remaining defaults from [bundle].
  *
- * "Non-default" means: exclude=true, nullable != "UNSET", non-blank transformerRef/transformerFQN,
+ * "Non-default" means: exclude=true, nullable != "UNSET", non-blank transformerFQN,
  * non-empty annotations, non-blank column/rename, non-empty validators.
  */
 private fun mergeAdditive(
@@ -150,7 +148,6 @@ private fun mergeAdditive(
 	        property       = prop,
 	        exclude        = if (s.exclude) true else b.exclude,
 	        nullable       = if (s.nullable != NullableOverride.UNSET) s.nullable else b.nullable,
-	        transformerRef = s.transformerRef.ifBlank { b.transformerRef },
 	        transformerFQN = s.transformerFQN ?: b.transformerFQN,
 	        classLevelAnn  = s.classLevelAnn.ifEmpty { b.classLevelAnn },
 	        fieldLevelAnn  = s.fieldLevelAnn.ifEmpty { b.fieldLevelAnn },

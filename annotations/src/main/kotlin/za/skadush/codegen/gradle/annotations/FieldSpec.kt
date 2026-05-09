@@ -27,7 +27,6 @@ import kotlin.reflect.KClass
  * @param exclude        Omit this field from the named output class(es) only.
  * @param nullable       Nullability override for the named output class(es).
  * @param transformer    [FieldTransformer] class for value conversion.
- * @param transformerRef Named transformer; wins over [transformer].
  * @param annotations    Annotations forwarded to the generated field in the named output class(es).
  * @param rename         Alternative field name in the generated class.
  * @param validators     Validation rules; each must be a singleton `object` implementing [FieldValidator].
@@ -41,7 +40,6 @@ annotation class FieldSpec(
     val exclude: Boolean = false,
     val nullable: NullableOverride = NullableOverride.UNSET,
     val transformer: KClass<out FieldTransformer<*, *>> = NoOpTransformer::class,
-    val transformerRef: String = "",
     val annotations: Array<CustomAnnotation> = [],
     val rename: String = "",
     val validators: Array<KClass<out FieldValidator<*>>> = []

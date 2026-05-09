@@ -75,7 +75,7 @@ import za.skadush.codegen.gradle.app.UpperCaseTransformer
         )
     ]
 )
-@FieldSpec(for_ = ["Response"], property = "name", transformerRef = "upperCase")
+@FieldSpec(for_ = ["Response"], property = "name", transformer = UpperCaseTransformer::class)
 @FieldSpec(
     for_ = ["CreateRequest", "UpdateRequest"],
     property = "name",

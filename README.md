@@ -106,7 +106,6 @@ Shared field override applied to **every** output class on the spec.
 | `exclude` | `Boolean` | `false` | Omit this field from every generated output. |
 | `nullable` | `NullableOverride` | `UNSET` | Override field nullability. |
 | `transformer` | `KClass<out FieldTransformer<*,*>>` | `NoOpTransformer::class` | Value converter class. |
-| `transformerRef` | `String` | `""` | Named transformer from a `@TransformerRegistry`. Wins over `transformer`. |
 | `annotations` | `Array<CustomAnnotation>` | `[]` | Annotations forwarded to this field in every output. |
 
 ### `@FieldSpec` _(repeatable)_
@@ -120,7 +119,6 @@ Per-output field override, scoped to one or more `@ClassSpec` instances by `for_
 | `exclude` | `Boolean` | `false` | Omit this field from the named output(s). |
 | `nullable` | `NullableOverride` | `UNSET` | Override field nullability for the named output(s). |
 | `transformer` | `KClass<out FieldTransformer<*,*>>` | `NoOpTransformer::class` | Value converter class. |
-| `transformerRef` | `String` | `""` | Named transformer from a `@TransformerRegistry`. |
 | `annotations` | `Array<CustomAnnotation>` | `[]` | Annotations forwarded to this field in the named output(s). |
 | `rename` | `String` | `""` | Alternative field name in the generated class. |
 | `validators` | `Array<KClass<out FieldValidator<*>>>` | `[]` | Runtime validators; each must be a singleton `object` implementing `FieldValidator`. |
@@ -256,15 +254,6 @@ class UpperCaseTransformer : FieldTransformer<String, String> {
 
 // Reference by class:
 @FieldSpec(for_ = ["Entity"], property = "name", transformer = UpperCaseTransformer::class)
-
-// Or register by name and reference as a string:
-@TransformerRegistry
-object MyTransformers {
-    @RegisterTransformer("upperCase")
-    val upperCase = UpperCaseTransformer()
-}
-
-@FieldSpec(for_ = ["Response"], property = "name", transformerRef = "upperCase")
 ```
 
 ---

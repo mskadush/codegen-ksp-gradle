@@ -34,14 +34,11 @@ class DomainMappingProcessorProvider : SymbolProcessorProvider {
         private val classResolver   = ClassResolver(logger)
         private val classGenerator  = ClassGenerator(environment.codeGenerator, logger, classResolver)
         private val mapperGenerator = MapperGenerator(environment.codeGenerator, logger, classResolver)
-        private val transformerRegistryScanner = TransformerRegistryScanner(logger)
         // BundleRegistry is cached across rounds: KSP AA may return 0 @FieldBundle symbols in
         // subsequent rounds (only new-file symbols are visible), so we keep the last non-empty registry.
         private var cachedBundleRegistry: BundleRegistry = BundleRegistry.EMPTY
 
         override fun process(resolver: Resolver): List<KSAnnotated> {
-            val transformerRegistry = transformerRegistryScanner.scan(resolver)
-
             // --- PASS 1: Build SpecRegistry + collect domain declarations for cycle detection ---
             // targets: domainFQN → (suffix → (outputPackage, outputName))
             val targetsBuilder   = mutableMapOf<String, MutableMap<String, Pair<String, String>>>()
@@ -168,7 +165,7 @@ class DomainMappingProcessorProvider : SymbolProcessorProvider {
                         val model = csAnn.toClassSpecModel(defaultPackage)
                         classGenerator.generate(spec, model)
                         if (!model.partial) {
-                            mapperGenerator.generate(spec, model, transformerRegistry)
+                            mapperGenerator.generate(spec, model)
                         }
                     }
                 }
@@ -176,7 +173,7 @@ class DomainMappingProcessorProvider : SymbolProcessorProvider {
             // Generate auto-discovered types (domain class acts as its own spec — no field overrides)
             for (model in syntheticModels) {
                 classGenerator.generate(model.domainClass, model)
-                mapperGenerator.generate(model.domainClass, model, transformerRegistry)
+                mapperGenerator.generate(model.domainClass, model)
             }
 
             return emptyList()

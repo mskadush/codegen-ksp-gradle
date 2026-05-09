@@ -20,7 +20,7 @@ import com.squareup.kotlinpoet.ksp.writeTo
  * the mapper emits `.to<Suffix>()` / `.toDomain()` calls for those fields.
  * Collection fields are mapped via `.map { }`.
  *
- * **Transformers**: fields with `transformer` or `transformerRef` overrides apply the transformer
+ * **Transformers**: fields with a `transformer` override apply the transformer
  * in the forward and reverse directions respectively.
  */
 class MapperGenerator(
@@ -37,10 +37,8 @@ class MapperGenerator(
     fun generate(
         spec: KSClassDeclaration,
         model: ClassSpecModel,
-        transformerRegistry: Map<String, String> = emptyMap(),
     ) {
         val outputName   = model.outputName
-        val specName     = spec.simpleName.asString()
         val overrides    = spec.resolveWithBundles(
             model.suffix, model.bundleFQNs, model.mergeStrategy, bundleRegistry,
         )
@@ -78,7 +76,7 @@ class MapperGenerator(
                     if (field.sourceExpression != null) {
                         "$paramName = ${field.sourceExpression}"
                     } else {
-                        val expr = forwardExpr(field.originalName, overrides[field.originalName], specName, transformerRegistry)
+                        val expr = forwardExpr(field.originalName, overrides[field.originalName])
                         "$paramName = $expr"
                     }
                 }
@@ -108,7 +106,7 @@ class MapperGenerator(
                     "${field.originalName} = this.$srcName.map { it.toDomain() }"
 
                 else -> {
-                    val baseExpr = reverseExpr(srcName, field.originalName, override, specName, transformerRegistry)
+                    val baseExpr = reverseExpr(srcName, override)
                     val needsBang = override?.nullable == NullableOverride.YES && !field.resolvedType.isNullable
                     "${field.originalName} = $baseExpr${if (needsBang) "!!" else ""}"
                 }
@@ -151,42 +149,21 @@ class MapperGenerator(
         return type.arguments.firstOrNull()?.type?.resolve()
     }
 
-    private fun forwardExpr(
-        fieldName: String,
-        override: MergedOverride?,
-        specName: String,
-        registry: Map<String, String>,
-    ): String {
-        val ref = override?.transformerRef ?: ""
+    private fun forwardExpr(fieldName: String, override: MergedOverride?): String {
         val fqn = override?.transformerFQN
-        return when {
-            ref.isNotBlank() -> {
-                val regRef = registry[ref]
-                if (regRef == null) { logger.error("Unknown transformer '$ref' on $specName.$fieldName"); "this.$fieldName" }
-                else "$regRef.toTarget(this.$fieldName)"
-            }
-            fqn != null && fqn != NO_OP_TRANSFORMER -> "$fqn().toTarget(this.$fieldName)"
-            else -> "this.$fieldName"
+        return if (fqn != null && fqn != NO_OP_TRANSFORMER) {
+            "$fqn().toTarget(this.$fieldName)"
+        } else {
+            "this.$fieldName"
         }
     }
 
-    private fun reverseExpr(
-        sourceName: String,
-        originalName: String,
-        override: MergedOverride?,
-        specName: String,
-        registry: Map<String, String>,
-    ): String {
-        val ref = override?.transformerRef ?: ""
+    private fun reverseExpr(sourceName: String, override: MergedOverride?): String {
         val fqn = override?.transformerFQN
-        return when {
-            ref.isNotBlank() -> {
-                val regRef = registry[ref]
-                if (regRef == null) { logger.error("Unknown transformer '$ref' on $specName.$originalName"); "this.$sourceName" }
-                else "$regRef.toDomain(this.$sourceName)"
-            }
-            fqn != null && fqn != NO_OP_TRANSFORMER -> "$fqn().toDomain(this.$sourceName)"
-            else -> "this.$sourceName"
+        return if (fqn != null && fqn != NO_OP_TRANSFORMER) {
+            "$fqn().toDomain(this.$sourceName)"
+        } else {
+            "this.$sourceName"
         }
     }
 
