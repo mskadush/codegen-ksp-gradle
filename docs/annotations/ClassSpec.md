@@ -11,7 +11,7 @@ Drives generation of a **single output class** from a domain type. Apply it mult
 | Property | Type | Default | Description |
 |---|---|---|---|
 | `for_` | `KClass<*>` | _(required)_ | Domain class to generate from. |
-| `suffix` | `String` | `""` | Appended to the domain class name → output class name. Also used as the discriminator in [`@FieldSpec.for_`](FieldSpec.md). |
+| `suffix` | `String` | `""` | Appended to the domain class name → output class name. Also used as the discriminator in [`@FieldOverride.for_`](FieldOverride.md). |
 | `prefix` | `String` | `""` | Prepended to the domain class name. |
 | `partial` | `Boolean` | `false` | When `true`, every generated field is nullable with `= null` defaults (update-request style). |
 | `bundles` | `Array<KClass<*>>` | `[]` | [`@FieldBundle`](FieldBundle.md) classes whose field configs are merged into this spec. |
@@ -28,7 +28,7 @@ The processor automatically decides what kind of class to emit:
 
 | Condition | Output kind |
 |---|---|
-| Any `@FieldSpec` scoped to this suffix has non-empty `validators` | **Request class** — emits `validate()` and `validateOrThrow()` |
+| Any `@FieldOverride` scoped to this suffix has non-empty `validators` | **Request class** — emits `validate()` and `validateOrThrow()` |
 | `partial = true` (without validators) | **Partial request class** — all fields nullable, same validation methods |
 | Otherwise | **Data class** with bidirectional mapper functions (`to<Suffix>()` / `toDomain()`) |
 
@@ -136,7 +136,7 @@ data class UserUpdateRequest(
 
 ## See also
 
-- [`@ClassField`](ClassField.md) — shared field overrides across all outputs
-- [`@FieldSpec`](FieldSpec.md) — per-output field overrides
+- [`@FieldSpec`](FieldSpec.md) — shared field overrides across all outputs
+- [`@FieldOverride`](FieldOverride.md) — per-output field overrides
 - [`@FieldBundle`](FieldBundle.md) — reusable field configuration bundles
 - [`@CustomAnnotation`](SupportingTypes.md#customannotation) — forwarding framework annotations to generated classes

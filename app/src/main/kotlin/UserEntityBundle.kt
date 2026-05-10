@@ -1,6 +1,6 @@
 import za.skadush.codegen.gradle.annotations.CustomAnnotation
 import za.skadush.codegen.gradle.annotations.FieldBundle
-import za.skadush.codegen.gradle.annotations.FieldSpec
+import za.skadush.codegen.gradle.annotations.FieldOverride
 
 /**
  * Entity-specific bundle for User: marks the primary key with JPA @Id and @GeneratedValue so
@@ -10,7 +10,7 @@ import za.skadush.codegen.gradle.annotations.FieldSpec
  * MERGE_ADDITIVE so the spec's nullable override on id is preserved while the bundle's annotations are added.
  */
 @FieldBundle
-@FieldSpec(
+@FieldOverride(
     for_ = ["Entity"],
     property = "id",
     annotations = [

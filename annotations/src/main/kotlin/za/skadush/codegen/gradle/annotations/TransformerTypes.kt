@@ -4,8 +4,8 @@ package za.skadush.codegen.gradle.annotations
  * Bidirectional converter between a domain type and a target (e.g. persistence) type.
  *
  * Implement this interface to transform field values when reading from or writing to
- * a generated entity or DTO. Reference the implementation class via [ClassField.transformer]
- * or [FieldSpec.transformer].
+ * a generated entity or DTO. Reference the implementation class via [FieldSpec.transformer]
+ * or [FieldOverride.transformer].
  *
  * @param Domain The type used in the domain model.
  * @param Target The type used in the generated class (e.g. a database column type).
@@ -20,7 +20,7 @@ interface FieldTransformer<Domain, Target> {
 /**
  * Default [FieldTransformer] that passes values through unchanged.
  *
- * Used as the default for [ClassField.transformer] and [FieldSpec.transformer] when
+ * Used as the default for [FieldSpec.transformer] and [FieldOverride.transformer] when
  * no transformation is needed.
  */
 class NoOpTransformer : FieldTransformer<Any, Any> {

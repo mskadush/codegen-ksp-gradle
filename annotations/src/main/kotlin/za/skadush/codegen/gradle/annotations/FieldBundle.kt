@@ -4,9 +4,9 @@ package za.skadush.codegen.gradle.annotations
  * Marks a class as a bundle of field configurations that can be shared
  * across multiple [@ClassSpec] specs.
  *
- * A bundle class carries the same [@ClassField] and [@FieldSpec] annotations as a spec class,
+ * A bundle class carries the same [@FieldSpec] and [@FieldOverride] annotations as a spec class,
  * but without [@ClassSpec]. Field overrides inside a bundle are scoped to specific output kinds
- * via [@FieldSpec.for_] exactly as they are in any spec class.
+ * via [@FieldOverride.for_] exactly as they are in any spec class.
  *
  * **Why this exists.** Bundles are the standardisation unit for cross-cutting concerns that show
  * up in every domain class — the canonical use cases are a `DocumentBundle` for persistence
@@ -26,11 +26,11 @@ package za.skadush.codegen.gradle.annotations
  * **Example — `DocumentBundle`** standardises persistence concerns across every entity:
  * ```kotlin
  * @FieldBundle
- * @FieldSpec(for_ = ["Entity"], property = "createdAt", annotations = [
+ * @FieldOverride(for_ = ["Entity"], property = "createdAt", annotations = [
  *     CustomAnnotation(jakarta.persistence.Column::class,
  *                      members = ["name=\"created_at\"", "nullable=false", "updatable=false"])
  * ])
- * @FieldSpec(for_ = ["Entity"], property = "tenantId", annotations = [
+ * @FieldOverride(for_ = ["Entity"], property = "tenantId", annotations = [
  *     CustomAnnotation(jakarta.persistence.Column::class, members = ["name=\"tenant_id\""])
  * ])
  * object DocumentBundle
@@ -39,9 +39,9 @@ package za.skadush.codegen.gradle.annotations
  * **Example — `DtoBundle`** standardises request/response shape across every endpoint:
  * ```kotlin
  * @FieldBundle
- * @FieldSpec(for_ = ["CreateRequest", "UpdateRequest"], property = "createdAt", exclude = true)
- * @FieldSpec(for_ = ["CreateRequest", "UpdateRequest"], property = "updatedAt", exclude = true)
- * @FieldSpec(for_ = ["CreateRequest"], property = "id", exclude = true)
+ * @FieldOverride(for_ = ["CreateRequest", "UpdateRequest"], property = "createdAt", exclude = true)
+ * @FieldOverride(for_ = ["CreateRequest", "UpdateRequest"], property = "updatedAt", exclude = true)
+ * @FieldOverride(for_ = ["CreateRequest"], property = "id", exclude = true)
  * object DtoBundle
  * ```
  *

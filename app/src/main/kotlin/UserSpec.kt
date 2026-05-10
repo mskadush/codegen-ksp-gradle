@@ -2,7 +2,7 @@ import za.skadush.codegen.gradle.annotations.BundleMergeStrategy
 import za.skadush.codegen.gradle.annotations.ClassSpec
 import za.skadush.codegen.gradle.annotations.CustomAnnotation
 import za.skadush.codegen.gradle.annotations.AddField
-import za.skadush.codegen.gradle.annotations.FieldSpec
+import za.skadush.codegen.gradle.annotations.FieldOverride
 import za.skadush.codegen.gradle.annotations.NullableOverride
 import za.skadush.codegen.gradle.app.UpperCaseTransformer
 
@@ -36,12 +36,12 @@ import za.skadush.codegen.gradle.app.UpperCaseTransformer
 @ClassSpec(for_ = User::class, suffix = "UpdateRequest", partial = true, bundles = [TimestampsBundle::class])
 
 // ---- id: nullable in Entity, excluded everywhere else ----
-@FieldSpec(for_ = ["Entity"], property = "id", nullable = NullableOverride.YES)
-@FieldSpec(for_ = ["Response", "CreateRequest", "UpdateRequest"], property = "id", exclude = true)
+@FieldOverride(for_ = ["Entity"], property = "id", nullable = NullableOverride.YES)
+@FieldOverride(for_ = ["Response", "CreateRequest", "UpdateRequest"], property = "id", exclude = true)
 
 // ---- email: excluded from Entity; renamed + annotated in Response; validated in requests ----
-@FieldSpec(for_ = ["Entity"], property = "email", exclude = true)
-@FieldSpec(
+@FieldOverride(for_ = ["Entity"], property = "email", exclude = true)
+@FieldOverride(
     for_ = ["Response"],
     property = "email",
     rename = "emailAddress",
@@ -52,19 +52,19 @@ import za.skadush.codegen.gradle.app.UpperCaseTransformer
         )
     ]
 )
-@FieldSpec(
+@FieldOverride(
     for_ = ["CreateRequest"],
     property = "email",
     validators = [EmailValidator::class, NotBlankValidator::class]
 )
-@FieldSpec(
+@FieldOverride(
     for_ = ["UpdateRequest"],
     property = "email",
     validators = [EmailValidator::class]
 )
 
 // ---- name: transformer in Entity; transformer in Response; validated in requests ----
-@FieldSpec(
+@FieldOverride(
     for_ = ["Entity"],
     property = "name",
     transformer = UpperCaseTransformer::class,
@@ -75,8 +75,8 @@ import za.skadush.codegen.gradle.app.UpperCaseTransformer
         )
     ]
 )
-@FieldSpec(for_ = ["Response"], property = "name", transformer = UpperCaseTransformer::class)
-@FieldSpec(
+@FieldOverride(for_ = ["Response"], property = "name", transformer = UpperCaseTransformer::class)
+@FieldOverride(
     for_ = ["CreateRequest", "UpdateRequest"],
     property = "name",
     validators = [NotBlankValidator::class]

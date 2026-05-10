@@ -1,13 +1,13 @@
 import za.skadush.codegen.gradle.annotations.CustomAnnotation
 import za.skadush.codegen.gradle.annotations.FieldBundle
-import za.skadush.codegen.gradle.annotations.FieldSpec
+import za.skadush.codegen.gradle.annotations.FieldOverride
 
 /**
  * Leaf bundle: marks the primary key of any Order-style entity with JPA @Id and @GeneratedValue.
  * Included transitively by [OrderBaseBundle] via @IncludeBundles.
  */
 @FieldBundle
-@FieldSpec(
+@FieldOverride(
     for_ = ["Entity"],
     property = "id",
     annotations = [

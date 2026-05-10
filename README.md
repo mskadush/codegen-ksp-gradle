@@ -55,8 +55,8 @@ data class User(
 
 ```kotlin
 @ClassSpec(for_ = User::class, suffix = "CreateRequest")
-@FieldSpec(for_ = ["CreateRequest"], property = "id", exclude = true)
-@FieldSpec(
+@FieldOverride(for_ = ["CreateRequest"], property = "id", exclude = true)
+@FieldOverride(
     for_ = ["CreateRequest"],
     property = "email",
     validators = [EmailValidator::class, NotBlankValidator::class]
@@ -96,9 +96,9 @@ Drives generation of a single output class from a domain type. Repeatable — ap
 | `annotations` | `Array<CustomAnnotation>` | `[]` | Annotations forwarded verbatim to the generated class (e.g. `@Entity`, `@Table`). |
 | `validateOnConstruct` | `Boolean` | `false` | Emits `init { validateOrThrow() }` so validation runs on construction. |
 
-### `@ClassField` _(repeatable)_
+### `@FieldSpec` _(repeatable)_
 
-Shared field override applied to **every** output class on the spec.
+Default field configuration applied to **every** output class on the spec.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -108,7 +108,7 @@ Shared field override applied to **every** output class on the spec.
 | `transformer` | `KClass<out FieldTransformer<*,*>>` | `NoOpTransformer::class` | Value converter class. |
 | `annotations` | `Array<CustomAnnotation>` | `[]` | Annotations forwarded to this field in every output. |
 
-### `@FieldSpec` _(repeatable)_
+### `@FieldOverride` _(repeatable)_
 
 Per-output field override, scoped to one or more `@ClassSpec` instances by `for_`.
 
@@ -131,9 +131,9 @@ Bundles let you share field configurations across multiple spec classes without 
 
 ```kotlin
 @FieldBundle
-@FieldSpec(for_ = ["Entity"], property = "createdAt",
+@FieldOverride(for_ = ["Entity"], property = "createdAt",
     annotations = [CustomAnnotation(jakarta.persistence.Column::class, ["name=\"created_at\""])])
-@FieldSpec(for_ = ["CreateRequest", "UpdateRequest"], property = "createdAt", exclude = true)
+@FieldOverride(for_ = ["CreateRequest", "UpdateRequest"], property = "createdAt", exclude = true)
 object TimestampsBundle
 
 @ClassSpec(
@@ -207,10 +207,10 @@ object NotBlankValidator : FieldValidator<String> {
 }
 ```
 
-### 2. Reference by `KClass` in `@FieldSpec`
+### 2. Reference by `KClass` in `@FieldOverride`
 
 ```kotlin
-@FieldSpec(
+@FieldOverride(
     for_ = ["CreateRequest"],
     property = "email",
     validators = [EmailValidator::class, NotBlankValidator::class]
@@ -253,7 +253,7 @@ class UpperCaseTransformer : FieldTransformer<String, String> {
 }
 
 // Reference by class:
-@FieldSpec(for_ = ["Entity"], property = "name", transformer = UpperCaseTransformer::class)
+@FieldOverride(for_ = ["Entity"], property = "name", transformer = UpperCaseTransformer::class)
 ```
 
 ---

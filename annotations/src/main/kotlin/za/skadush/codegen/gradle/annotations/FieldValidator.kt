@@ -4,7 +4,7 @@ package za.skadush.codegen.gradle.annotations
  * A runtime validation rule for a single field value.
  *
  * Implement this interface as a singleton `object` and reference it in
- * [FieldSpec.validators] via `KClass`. The processor emits a delegation call
+ * [FieldOverride.validators] via `KClass`. The processor emits a delegation call
  * in the generated `validate()` method:
  * ```kotlin
  * MyValidator.let { v -> ctx.ensure(v.validate(fieldValue), FieldRef("field"), v.message) }

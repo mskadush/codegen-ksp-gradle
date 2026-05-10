@@ -9,23 +9,23 @@ import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.ClassName
 
 // ---------------------------------------------------------------------------
-// MergedOverride — consolidated view of ClassField + FieldSpec for one field
+// MergedOverride — consolidated view of @FieldSpec + @FieldOverride for one field
 // ---------------------------------------------------------------------------
 
 /**
- * Merged field configuration for a single domain property, combining a [ClassField]
- * (which applies to all outputs) with any [FieldSpec] scoped to a specific suffix.
+ * Merged field configuration for a single domain property, combining a [FieldSpec]
+ * (which applies to all outputs) with any [FieldOverride] scoped to a specific suffix.
  *
- * [FieldSpec] params win over [ClassField] for overlapping properties.
+ * [FieldOverride] params win over [FieldSpec] for overlapping properties.
  */
 data class MergedOverride(
     val property: String,
     val exclude: Boolean,
     val nullable: NullableOverride,
     val transformerFQN: String?,
-    /** Raw CustomAnnotation KSAnnotations from @ClassField.annotations */
-    val classLevelAnn: List<KSAnnotation>,
     /** Raw CustomAnnotation KSAnnotations from @FieldSpec.annotations */
+    val classLevelAnn: List<KSAnnotation>,
+    /** Raw CustomAnnotation KSAnnotations from @FieldOverride.annotations */
     val fieldLevelAnn: List<KSAnnotation>,
     val rename: String,
     val validators: List<KSType>,
@@ -41,17 +41,17 @@ data class MergedOverride(
 /**
  * Builds a [MergedOverride] map for every property configured on this spec class for [suffix].
  *
- * - All [@ClassField] annotations contribute base values.
- * - [@FieldSpec] annotations whose [for_] array contains [suffix] override those base values
+ * - All [@FieldSpec] annotations contribute base values.
+ * - [@FieldOverride] annotations whose [for_] array contains [suffix] override those base values
  *   and add output-kind-specific params (rename, validators, etc.).
  */
 internal fun KSClassDeclaration.mergedFieldOverrides(suffix: String): Map<String, MergedOverride> {
     val classFields: Map<String, KSAnnotation> = annotations
-        .filter { it.shortName.asString() == AN_CLASS_FIELD }
+        .filter { it.shortName.asString() == AN_FIELD_SPEC }
         .associateBy { it.argString(PROP_PROPERTY) }
 
     val fieldSpecs: Map<String, KSAnnotation> = annotations
-        .filter { it.shortName.asString() == AN_FIELD_SPEC }
+        .filter { it.shortName.asString() == AN_FIELD_OVERRIDE }
         .filter { ann ->
             val forList = ann.arguments.firstOrNull { it.name?.asString() == PROP_FOR }?.value as? List<*>
             forList?.filterIsInstance<String>()?.contains(suffix) == true

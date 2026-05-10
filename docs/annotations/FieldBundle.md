@@ -4,7 +4,7 @@
 
 Marks a class as a **reusable bundle of field configurations** that can be shared across multiple [`@ClassSpec`](ClassSpec.md) specs.
 
-A bundle class carries the same [`@ClassField`](ClassField.md) and [`@FieldSpec`](FieldSpec.md) annotations as any spec class — but without `@ClassSpec`. The processor merges the bundle's field configurations into each referencing spec according to the spec's `bundleMergeStrategy`.
+A bundle class carries the same [`@FieldSpec`](FieldSpec.md) and [`@FieldOverride`](FieldOverride.md) annotations as any spec class — but without `@ClassSpec`. The processor merges the bundle's field configurations into each referencing spec according to the spec's `bundleMergeStrategy`.
 
 The bundle class itself is its own identity — reference it by `KClass` in `@ClassSpec.bundles`.
 
@@ -33,7 +33,7 @@ Declares **transitive bundle dependencies** for the annotated bundle class. When
 When `@ClassSpec(bundles = [TimestampsBundle::class])` is set, the processor:
 
 1. Looks up `TimestampsBundle` in the bundle registry by its fully-qualified class name.
-2. Reads all `@ClassField` and `@FieldSpec` annotations from that bundle class.
+2. Reads all `@FieldSpec` and `@FieldOverride` annotations from that bundle class.
 3. Merges them into the spec's own field configurations according to `bundleMergeStrategy`:
    - `SPEC_WINS` _(default)_ — spec's own config takes precedence; bundle fills gaps.
    - `BUNDLE_WINS` — bundle's config takes precedence; spec fills gaps.
@@ -50,14 +50,14 @@ Bundles can include other bundles transitively — reference additional bundle c
 ```kotlin
 @FieldBundle
 // Entity: Jakarta persistence annotations
-@FieldSpec(
+@FieldOverride(
     for_ = ["Entity"], property = "createdAt",
     annotations = [CustomAnnotation(
         annotation = jakarta.persistence.Column::class,
         members = ["name=\"created_at\"", "nullable=false", "updatable=false"]
     )]
 )
-@FieldSpec(
+@FieldOverride(
     for_ = ["Entity"], property = "updatedAt",
     nullable = NullableOverride.YES,
     annotations = [CustomAnnotation(
@@ -66,8 +66,8 @@ Bundles can include other bundles transitively — reference additional bundle c
     )]
 )
 // Requests: exclude audit fields (not user-supplied)
-@FieldSpec(for_ = ["CreateRequest", "UpdateRequest"], property = "createdAt", exclude = true)
-@FieldSpec(for_ = ["CreateRequest", "UpdateRequest"], property = "updatedAt", exclude = true)
+@FieldOverride(for_ = ["CreateRequest", "UpdateRequest"], property = "createdAt", exclude = true)
+@FieldOverride(for_ = ["CreateRequest", "UpdateRequest"], property = "updatedAt", exclude = true)
 object TimestampsBundle
 ```
 
@@ -84,14 +84,14 @@ object TimestampsBundle
 object UserSpec
 ```
 
-`TimestampsBundle`'s `@FieldSpec` overrides are merged as if they were written directly on `UserSpec`.
+`TimestampsBundle`'s `@FieldOverride` overrides are merged as if they were written directly on `UserSpec`.
 
 ### Transitive bundles
 
 ```kotlin
 // A leaf bundle
 @FieldBundle
-@FieldSpec(
+@FieldOverride(
     for_ = ["Entity"], property = "id",
     annotations = [CustomAnnotation(annotation = jakarta.persistence.Id::class)]
 )
@@ -129,4 +129,4 @@ val updatedAt: Instant?,
 
 - [`@ClassSpec.bundles`](ClassSpec.md) — where bundle classes are referenced
 - [`BundleMergeStrategy`](SupportingTypes.md#bundlemergestrategy) — conflict resolution options
-- [`@FieldSpec`](FieldSpec.md) — the annotation type used inside bundle classes
+- [`@FieldOverride`](FieldOverride.md) — the annotation type used inside bundle classes

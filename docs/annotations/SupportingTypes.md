@@ -8,7 +8,7 @@ Reference for all enums and helper annotation types used throughout the annotati
 
 Controls whether a generated field's nullability is overridden relative to the domain model.
 
-Used by: [`@ClassField.nullable`](ClassField.md), [`@FieldSpec.nullable`](FieldSpec.md)
+Used by: [`@FieldSpec.nullable`](FieldSpec.md), [`@FieldOverride.nullable`](FieldOverride.md)
 
 | Value | Behaviour |
 |---|---|
@@ -21,11 +21,11 @@ Used by: [`@ClassField.nullable`](ClassField.md), [`@FieldSpec.nullable`](FieldS
 ```kotlin
 // Domain: val updatedAt: Instant?   (nullable)
 // Force non-nullable in a specific output:
-@FieldSpec(for_ = ["CreateRequest"], property = "updatedAt", nullable = NullableOverride.NO)
+@FieldOverride(for_ = ["CreateRequest"], property = "updatedAt", nullable = NullableOverride.NO)
 
 // Domain: val id: Long   (non-nullable)
 // Force nullable for the entity (auto-generated PK):
-@FieldSpec(for_ = ["Entity"], property = "id", nullable = NullableOverride.YES)
+@FieldOverride(for_ = ["Entity"], property = "id", nullable = NullableOverride.YES)
 ```
 
 ---
@@ -111,7 +111,7 @@ object OrderSpec
 
 Represents an **arbitrary annotation** to be emitted on a generated class or field. Use this when you need to attach framework-specific annotations (JPA, Jackson, etc.) that the DSL does not natively model.
 
-> This is not a meta-annotation — it is a normal annotation used as an **array element** inside `@ClassSpec.annotations` and `@FieldSpec.annotations`.
+> This is not a meta-annotation — it is a normal annotation used as an **array element** inside `@ClassSpec.annotations` and `@FieldOverride.annotations`.
 
 ### Properties
 
@@ -150,7 +150,7 @@ data class UserEntity(...)
 #### On a field
 
 ```kotlin
-@FieldSpec(
+@FieldOverride(
     for_ = ["Entity"],
     property = "id",
     annotations = [
@@ -186,6 +186,6 @@ CustomAnnotation(
 ## See also
 
 - [`@ClassSpec`](ClassSpec.md) — where these enums appear as parameters
-- [`@ClassField`](ClassField.md) — `NullableOverride` usage
-- [`@FieldSpec`](FieldSpec.md) — `NullableOverride` and `validators` usage
+- [`@FieldSpec`](FieldSpec.md) — `NullableOverride` usage
+- [`@FieldOverride`](FieldOverride.md) — `NullableOverride` and `validators` usage
 - [`@FieldBundle`](FieldBundle.md) — `BundleMergeStrategy` usage

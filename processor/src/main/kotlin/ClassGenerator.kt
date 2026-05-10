@@ -31,9 +31,9 @@ private val VALIDATION_EXCEPTION = ValidationException::class.asClassName()
  * generator. Output shape is driven entirely by the spec:
  *
  * - `partial = true`            → every field is nullable with `= null` (update-request style).
- * - Any field has [FieldSpec.validators] → a `validate()` + `validateOrThrow()` pair is emitted
+ * - Any field has [FieldOverride.validators] → a `validate()` + `validateOrThrow()` pair is emitted
  *   on the class. `validateOnConstruct = true` additionally emits `init { validateOrThrow() }`.
- * - [FieldSpec.rename]          → field name in the generated class differs from the domain name.
+ * - [FieldOverride.rename]      → field name in the generated class differs from the domain name.
  * - Nested domain types that have their own spec for the same suffix are replaced with their
  *   generated equivalents (e.g. `Address` → `AddressEntity` when suffix = `"Entity"`).
  */

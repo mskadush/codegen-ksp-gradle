@@ -1,6 +1,6 @@
 # `@AddField`
 
-Injects a **synthetic field** into one or more generated output classes. Unlike [`@FieldSpec`](FieldSpec.md), which configures fields that originate from the domain class, `@AddField` creates a brand-new field with no domain counterpart — useful for persistence metadata (`@Version`, `@CreationTimestamp`) or computed display fields that belong only to a specific output shape.
+Injects a **synthetic field** into one or more generated output classes. Unlike [`@FieldOverride`](FieldOverride.md), which configures fields that originate from the domain class, `@AddField` creates a brand-new field with no domain counterpart — useful for persistence metadata (`@Version`, `@CreationTimestamp`) or computed display fields that belong only to a specific output shape.
 
 > **Target**: `CLASS` · **Retention**: `SOURCE` · **Repeatable**: yes
 
@@ -92,5 +92,5 @@ object ProductSpec
 ## See also
 
 - [`@ClassSpec`](ClassSpec.md) — defines the output classes that `for_` refers to
-- [`@FieldSpec`](FieldSpec.md) — overrides fields that originate from the domain class
+- [`@FieldOverride`](FieldOverride.md) — overrides fields that originate from the domain class
 - [`SupportingTypes`](SupportingTypes.md) — `CustomAnnotation` reference

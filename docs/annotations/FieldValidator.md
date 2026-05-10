@@ -1,6 +1,6 @@
 # `FieldValidator`
 
-`FieldValidator<in T>` is the runtime interface for single-field validation rules. Implement it as a singleton `object` and reference it by `KClass` in [`@FieldSpec.validators`](FieldSpec.md).
+`FieldValidator<in T>` is the runtime interface for single-field validation rules. Implement it as a singleton `object` and reference it by `KClass` in [`@FieldOverride.validators`](FieldOverride.md).
 
 The processor emits a delegation call for each validator in the generated `validate()` method:
 
@@ -51,17 +51,17 @@ object PositiveValidator : FieldValidator<Int> {
 
 ## Referencing validators
 
-Pass validator classes to `@FieldSpec.validators`:
+Pass validator classes to `@FieldOverride.validators`:
 
 ```kotlin
-@FieldSpec(
+@FieldOverride(
     for_ = ["CreateRequest"],
     property = "email",
     validators = [EmailValidator::class, NotBlankValidator::class]
 )
 
 // Share the same set across multiple outputs
-@FieldSpec(
+@FieldOverride(
     for_ = ["CreateRequest", "UpdateRequest"],
     property = "name",
     validators = [NotBlankValidator::class]
@@ -89,12 +89,12 @@ object NonEmptyEmailValidator : FieldValidator<String> {
 Given:
 
 ```kotlin
-@FieldSpec(
+@FieldOverride(
     for_ = ["CreateRequest"],
     property = "email",
     validators = [EmailValidator::class, NotBlankValidator::class]
 )
-@FieldSpec(
+@FieldOverride(
     for_ = ["CreateRequest"],
     property = "name",
     validators = [NotBlankValidator::class]
@@ -160,5 +160,5 @@ request.validateOrThrow()   // throws ValidationException if any validator fails
 
 ## See also
 
-- [`@FieldSpec.validators`](FieldSpec.md) — where validator classes are referenced
+- [`@FieldOverride.validators`](FieldOverride.md) — where validator classes are referenced
 - Runtime types: `ValidationResult`, `ValidationContext`, `ValidationException`, `ValidationError` — in the `:runtime` module

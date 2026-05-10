@@ -1,8 +1,8 @@
-import za.skadush.codegen.gradle.annotations.ClassField
 import za.skadush.codegen.gradle.annotations.ClassSpec
 import za.skadush.codegen.gradle.annotations.CustomAnnotation
 import za.skadush.codegen.gradle.annotations.AddField
 import za.skadush.codegen.gradle.annotations.FieldBundle
+import za.skadush.codegen.gradle.annotations.FieldOverride
 import za.skadush.codegen.gradle.annotations.FieldSpec
 import za.skadush.codegen.gradle.annotations.IncludeBundles
 import za.skadush.codegen.gradle.annotations.NoOpTransformer
@@ -10,8 +10,8 @@ import za.skadush.codegen.gradle.annotations.NoOpTransformer
 // ── Annotation short names (for shortName.asString() comparisons) ─────────────
 internal val AN_CLASS_SPEC           = ClassSpec::class.simpleName!!
 internal val AN_CLASS_SPECS          = ClassSpec::class.simpleName!! + "s"   // @Repeatable container
-internal val AN_CLASS_FIELD          = ClassField::class.simpleName!!
 internal val AN_FIELD_SPEC           = FieldSpec::class.simpleName!!
+internal val AN_FIELD_OVERRIDE       = FieldOverride::class.simpleName!!
 internal val AN_FIELD_BUNDLE         = FieldBundle::class.simpleName!!
 internal val AN_INCLUDE_BUNDLES      = IncludeBundles::class.simpleName!!
 
@@ -32,15 +32,15 @@ internal val PROP_ANNOTATIONS           = ClassSpec::annotations.name
 internal val PROP_VALIDATE_ON_CONSTRUCT = ClassSpec::validateOnConstruct.name
 internal val PROP_OUTPUT_PACKAGE        = ClassSpec::outputPackage.name
 
-// ── ClassField / FieldSpec shared property names ──────────────────────────────
-internal val PROP_PROPERTY        = ClassField::property.name
-internal val PROP_EXCLUDE         = ClassField::exclude.name
-internal val PROP_NULLABLE        = ClassField::nullable.name
-internal val PROP_TRANSFORMER     = ClassField::transformer.name
+// ── @FieldSpec / @FieldOverride shared property names ─────────────────────────
+internal val PROP_PROPERTY        = FieldSpec::property.name
+internal val PROP_EXCLUDE         = FieldSpec::exclude.name
+internal val PROP_NULLABLE        = FieldSpec::nullable.name
+internal val PROP_TRANSFORMER     = FieldSpec::transformer.name
 
-// ── FieldSpec-only property names ─────────────────────────────────────────────
-internal val PROP_RENAME      = FieldSpec::rename.name
-internal val PROP_VALIDATORS  = FieldSpec::validators.name
+// ── @FieldOverride-only property names ────────────────────────────────────────
+internal val PROP_RENAME      = FieldOverride::rename.name
+internal val PROP_VALIDATORS  = FieldOverride::validators.name
 
 // ── CustomAnnotation property names ───────────────────────────────────────────
 internal val PROP_ANNOTATION = CustomAnnotation::annotation.name
@@ -59,4 +59,3 @@ internal val PROP_ADD_NAME     = AddField::name.name
 internal val PROP_ADD_TYPE     = AddField::type.name
 internal val PROP_ADD_NULLABLE = AddField::nullable.name
 internal val PROP_ADD_DEFAULT  = AddField::defaultValue.name
-

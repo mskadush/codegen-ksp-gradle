@@ -4,7 +4,7 @@ This library is a [KSP](https://github.com/google/ksp) annotation processor that
 
 | Artifact | Purpose |
 |----------|---------|
-| `codegen-annotations` | Annotation API (`@ClassSpec`, `@FieldSpec`, `@FieldBundle`, …) |
+| `codegen-annotations` | Annotation API (`@ClassSpec`, `@FieldOverride`, `@FieldBundle`, …) |
 | `codegen-runtime` | Runtime utilities used by generated code |
 | `codegen-processor` | KSP symbol processor — drives code generation |
 

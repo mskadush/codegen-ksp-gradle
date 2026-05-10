@@ -7,10 +7,10 @@ import kotlin.reflect.KClass
  *
  * Apply multiple `@ClassSpec` annotations to the same spec class to generate several output
  * classes from one domain type. Each instance is uniquely identified by [suffix], which is
- * also used by [FieldSpec.for_] to scope field overrides to a specific output class.
+ * also used by [FieldOverride.for_] to scope field overrides to a specific output class.
  *
  * **Output-kind inference** (processor):
- * - Any [FieldSpec] scoped to this suffix has non-empty [FieldSpec.validators] → a `validate()` /
+ * - Any [FieldOverride] scoped to this suffix has non-empty [FieldOverride.validators] → a `validate()` /
  *   `validateOrThrow()` pair is emitted on the class.
  * - [partial] = `true` → all fields are nullable with `= null` defaults (update-request style).
  * - Otherwise → plain data class with bidirectional mapper functions (`to<Suffix>()`/`toDomain()`).
@@ -30,7 +30,7 @@ import kotlin.reflect.KClass
  *
  * @param for_                   Domain class to generate from.
  * @param suffix                 Appended to the domain class name to form the output class name.
- *                               Also used as the discriminator by [FieldSpec.for_].
+ *                               Also used as the discriminator by [FieldOverride.for_].
  * @param prefix                 Prepended to the domain class name.
  * @param partial                When `true`, every generated field is nullable with `= null`.
  * @param bundles                [@FieldBundle] classes whose field configs are merged into this spec.

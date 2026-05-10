@@ -7,7 +7,7 @@ import kotlin.reflect.KClass
  * Injects a synthetic field into one or more generated output classes; the field has no
  * counterpart in the domain class.
  *
- * Unlike [FieldSpec], which overrides fields that *originate from* the domain class, [AddField]
+ * Unlike [FieldOverride], which overrides fields that *originate from* the domain class, [AddField]
  * adds a brand-new field. Typical uses include persistence metadata (`@Version`,
  * `@CreationTimestamp`) or computed display fields that belong only to a specific output shape.
  *

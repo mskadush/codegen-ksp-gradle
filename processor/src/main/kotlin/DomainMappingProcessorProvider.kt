@@ -242,7 +242,7 @@ private fun KSAnnotation.domainClass(): KSClassDeclaration? =
         ?.declaration as? KSClassDeclaration
 
 /**
- * Validates that every `property` value in [@ClassField] and [@FieldSpec] annotations on this
+ * Validates that every `property` value in [@FieldSpec] and [@FieldOverride] annotations on this
  * spec references an actual primary constructor parameter of the domain class, and that every
  * bundle class in [@ClassSpec.bundles] is annotated with [@FieldBundle].
  */
@@ -264,7 +264,7 @@ private fun KSClassDeclaration.validatePropertyRefs(
     if (domainProps.isEmpty()) return
 
     annotations
-        .filter { it.shortName.asString() in setOf(AN_CLASS_FIELD, AN_FIELD_SPEC) }
+        .filter { it.shortName.asString() in setOf(AN_FIELD_SPEC, AN_FIELD_OVERRIDE) }
         .forEach { ann ->
             val property = ann.argString(PROP_PROPERTY)
             if (property.isNotBlank() && property !in domainProps) {
@@ -288,7 +288,7 @@ private fun KSClassDeclaration.validatePropertyRefs(
                 return@forEach
             }
             bundleDecl.annotations
-                .filter { it.shortName.asString() in setOf(AN_CLASS_FIELD, AN_FIELD_SPEC) }
+                .filter { it.shortName.asString() in setOf(AN_FIELD_SPEC, AN_FIELD_OVERRIDE) }
                 .forEach { ann ->
                     val property = ann.argString(PROP_PROPERTY)
                     if (property.isNotBlank() && property !in localDomainProps) {
