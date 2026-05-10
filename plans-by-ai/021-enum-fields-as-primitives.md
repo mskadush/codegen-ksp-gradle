@@ -68,7 +68,7 @@ The integration test is adding an enum field to the `:app` module's domain class
 ## Checklist
 
 - [x] W1 — Add `ClassKind` import to `ClassResolver.kt`
-- [x] W2 — Enum guard in `classifyField()`
-- [x] W3 — Enum guard in `isNonPrimitiveUnmapped()`
-- [x] W4 — Add `OrderStatus` enum + `status` field to `Order.kt` in `:app`
-- [x] W5 — KSP generation passes; `OrderEntity` contains `status: OrderStatus` as a plain field; mapper passes it through unchanged
+- [x] W2 — Enum guard in `classifyField()` (`ClassResolver.kt:131`)
+- [ ] W3 — Enum guard in `isNonPrimitiveUnmapped()` — **not added; unnecessary.** `toAutoGenerateCandidate()` (`DomainMappingProcessorProvider.kt:219`) already returns `null` for enum classes, so `isNonPrimitiveUnmapped()` short-circuits on the `toAutoGenerateCandidate() == null` early-return before any enum can reach the INLINE expansion branch. Per project convention ("don't add validation for scenarios that can't happen") the explicit guard is redundant.
+- [x] W4 — Added `OrderStatus` enum + `status` field to `Order.kt` in `:app`
+- [x] W5 — KSP generation passes; `OrderEntity` contains `status: OrderStatus` as a plain field (`OrderEntity.kt:15`); mapper passes it through unchanged (`OrderEntityMappers.kt:5`)
