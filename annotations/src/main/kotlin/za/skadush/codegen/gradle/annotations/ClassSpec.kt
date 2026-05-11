@@ -40,6 +40,16 @@ import kotlin.reflect.KClass
  * @param validateOnConstruct    When `true`, emits an `init { validateOrThrow() }` block so the
  *                               object is validated immediately on construction. Useful when
  *                               deserialisation frameworks call the constructor directly.
+ * @param validators             Cross-field validators applied to the generated class. Each entry
+ *                               must be a singleton `object` implementing
+ *                               `za.skadush.codegen.gradle.runtime.ObjectValidator<GeneratedClass>`,
+ *                               where `GeneratedClass` is the output class produced by this spec
+ *                               (i.e. `prefix + domainName + suffix`). Object validators run in
+ *                               declaration order **after** all field validators in the generated
+ *                               `validate()` method. The processor verifies the type argument; a
+ *                               mismatch fails compilation with a clear KSP error.
+ *                               Loose-typed as `KClass<*>` here because the annotations module
+ *                               must not depend on the runtime module where `ObjectValidator` lives.
  * @param outputPackage          Package for the generated class and its mapper file.
  *                               Precedence: this value → `codegen.defaultPackage` KSP option →
  *                               domain class package (existing behaviour when both are unset).
@@ -57,6 +67,7 @@ annotation class ClassSpec(
     val unmappedNestedStrategy: UnmappedNestedStrategy = UnmappedNestedStrategy.FAIL,
     val annotations: Array<CustomAnnotation> = [],
     val validateOnConstruct: Boolean = false,
+    val validators: Array<KClass<*>> = [],
     val outputPackage: String = "",
 )
 

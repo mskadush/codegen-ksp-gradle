@@ -30,7 +30,11 @@ internal val PROP_BUNDLE_MERGE_STRATEGY = ClassSpec::bundleMergeStrategy.name
 internal val PROP_UNMAPPED_NESTED       = ClassSpec::unmappedNestedStrategy.name
 internal val PROP_ANNOTATIONS           = ClassSpec::annotations.name
 internal val PROP_VALIDATE_ON_CONSTRUCT = ClassSpec::validateOnConstruct.name
+internal val PROP_CLASS_SPEC_VALIDATORS = ClassSpec::validators.name
 internal val PROP_OUTPUT_PACKAGE        = ClassSpec::outputPackage.name
+
+// ── ObjectValidator FQN (for bound checks) ───────────────────────────────────
+internal const val FQN_OBJECT_VALIDATOR = "za.skadush.codegen.gradle.runtime.ObjectValidator"
 
 // ── @FieldSpec / @FieldOverride shared property names ─────────────────────────
 internal val PROP_PROPERTY        = FieldSpec::property.name

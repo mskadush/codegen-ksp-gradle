@@ -87,6 +87,28 @@ class ValidationContext {
     }
 
     /**
+     * Records an unconditional error for [field].
+     *
+     * Convenience for [ObjectValidator]-style cross-field rules that have already decided
+     * a failure has occurred and just need to attach a message to a specific field.
+     *
+     * @param field   The field the error applies to.
+     * @param message Description of the failure, recorded verbatim in [ValidationError.message].
+     */
+    fun error(field: FieldRef, message: String) {
+        errors += ValidationError(field, message)
+    }
+
+    /**
+     * Records an unconditional error for the field named [field].
+     *
+     * String-name overload of [error] for ergonomic use inside object validators.
+     */
+    fun error(field: String, message: String) {
+        errors += ValidationError(FieldRef(field), message)
+    }
+
+    /**
      * Records an error when none of [fields] are provided.
      *
      * Intended for cross-field "at least one of X, Y, Z must be set" constraints.

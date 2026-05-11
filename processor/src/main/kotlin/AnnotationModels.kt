@@ -27,6 +27,7 @@ data class ClassSpecModel(
     val mergeStrategy: BundleMergeStrategy,
     val unmappedStrategy: UnmappedNestedStrategy,
     val classAnnotations: List<KSAnnotation>,
+    val objectValidators: List<KSType>,
     val outputPackage: String,
     val processorDefaultPackage: String,
 ) {
@@ -51,6 +52,7 @@ internal fun KSAnnotation.toClassSpecModel(processorDefaultPackage: String = "")
         mergeStrategy            = argBundleMergeStrategy(),
         unmappedStrategy         = argUnmappedNestedStrategy(),
         classAnnotations         = argAnnotationList(),
+        objectValidators         = argKClassList(PROP_CLASS_SPEC_VALIDATORS),
         outputPackage            = argString(PROP_OUTPUT_PACKAGE),
         processorDefaultPackage  = processorDefaultPackage,
     )

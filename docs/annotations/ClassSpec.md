@@ -19,6 +19,7 @@ Drives generation of a **single output class** from a domain type. Apply it mult
 | `unmappedNestedStrategy` | `UnmappedNestedStrategy` | `FAIL` | What to do when a nested domain type has no explicit mapping. See [`UnmappedNestedStrategy`](SupportingTypes.md#unmappednestedstrategy). |
 | `annotations` | `Array<CustomAnnotation>` | `[]` | Annotations forwarded verbatim to the generated class (e.g. `@Entity`, `@Table`). See [`@CustomAnnotation`](SupportingTypes.md#customannotation). |
 | `validateOnConstruct` | `Boolean` | `false` | When `true`, emits `init { validateOrThrow() }` so validation runs on construction. Useful when deserialisation frameworks call the constructor directly. |
+| `validators` | `Array<KClass<*>>` | `[]` | Cross-field validators applied to the generated class. Each entry must be a singleton `object` implementing [`ObjectValidator<GeneratedClass>`](ObjectValidator.md). Loose-typed here because the annotations module cannot depend on the runtime module where `ObjectValidator` lives; the processor verifies the bound. |
 
 ---
 
@@ -28,7 +29,7 @@ The processor automatically decides what kind of class to emit:
 
 | Condition | Output kind |
 |---|---|
-| Any `@FieldOverride` scoped to this suffix has non-empty `validators` | **Request class** — emits `validate()` and `validateOrThrow()` |
+| Any `@FieldOverride` scoped to this suffix has non-empty `validators`, **or** `@ClassSpec.validators` is non-empty | **Request class** — emits `validate()` and `validateOrThrow()` |
 | `partial = true` (without validators) | **Partial request class** — all fields nullable, same validation methods |
 | Otherwise | **Data class** with bidirectional mapper functions (`to<Suffix>()` / `toDomain()`) |
 
@@ -139,4 +140,6 @@ data class UserUpdateRequest(
 - [`@FieldSpec`](FieldSpec.md) — shared field overrides across all outputs
 - [`@FieldOverride`](FieldOverride.md) — per-output field overrides
 - [`@FieldBundle`](FieldBundle.md) — reusable field configuration bundles
+- [`FieldValidator`](FieldValidator.md) — single-field validation rules
+- [`ObjectValidator`](ObjectValidator.md) — cross-field validation rules referenced by `validators`
 - [`@CustomAnnotation`](SupportingTypes.md#customannotation) — forwarding framework annotations to generated classes

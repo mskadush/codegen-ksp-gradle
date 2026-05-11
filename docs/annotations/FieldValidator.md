@@ -161,4 +161,5 @@ request.validateOrThrow()   // throws ValidationException if any validator fails
 ## See also
 
 - [`@FieldOverride.validators`](FieldOverride.md) — where validator classes are referenced
+- [`ObjectValidator`](ObjectValidator.md) — sibling interface for cross-field rules that span multiple properties
 - Runtime types: `ValidationResult`, `ValidationContext`, `ValidationException`, `ValidationError` — in the `:runtime` module

@@ -1,5 +1,6 @@
 import za.skadush.codegen.gradle.annotations.BundleMergeStrategy
 import za.skadush.codegen.gradle.annotations.UnmappedNestedStrategy
+import com.google.devtools.ksp.getAllSuperTypes
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessor
@@ -109,6 +110,7 @@ class DomainMappingProcessorProvider : SymbolProcessorProvider {
                     mergeStrategy           = BundleMergeStrategy.SPEC_WINS,
                     unmappedStrategy        = UnmappedNestedStrategy.AUTO_GENERATE,
                     classAnnotations        = emptyList(),
+                    objectValidators        = emptyList(),
                     outputPackage           = outputPkg,
                     processorDefaultPackage = "",
                 ))
@@ -154,6 +156,16 @@ class DomainMappingProcessorProvider : SymbolProcessorProvider {
             resolver.getSymbolsWithAnnotation(FQN_CLASS_SPEC)
                 .filterIsInstance<KSClassDeclaration>()
                 .forEach { spec -> spec.validatePropertyRefs(cachedBundleRegistry, logger) }
+
+            // --- PASS 1e: Validate @ClassSpec.validators bounds ---
+            resolver.getSymbolsWithAnnotation(FQN_CLASS_SPEC)
+                .filterIsInstance<KSClassDeclaration>()
+                .forEach { spec ->
+                    spec.classSpecAnnotations().forEach { csAnn ->
+                        val model = csAnn.toClassSpecModel(defaultPackage)
+                        validateObjectValidatorBounds(spec, model, logger)
+                    }
+                }
 
             // --- PASS 2: Generate ---
             classResolver.registry = specRegistry
@@ -224,6 +236,73 @@ internal fun KSType.toAutoGenerateCandidate(): KSClassDeclaration? {
 // ---------------------------------------------------------------------------
 // Local helpers on KSClassDeclaration / KSAnnotation
 // ---------------------------------------------------------------------------
+
+/**
+ * Verifies every entry in `@ClassSpec.validators` implements `ObjectValidator<GeneratedClass>`
+ * where `GeneratedClass` is the output produced by this [model] (prefix + domainName + suffix).
+ *
+ * Emits a clear KSP error on:
+ * - Validator class is not a class declaration (e.g. function reference).
+ * - Validator class does not implement `ObjectValidator<*>` at all.
+ * - Validator class implements `ObjectValidator<X>` where `X` is not the generated output class.
+ */
+private fun validateObjectValidatorBounds(
+    spec: KSClassDeclaration,
+    model: ClassSpecModel,
+    logger: KSPLogger,
+) {
+    if (model.objectValidators.isEmpty()) return
+    val expectedFqn = model.resolvedOutputPackage.let {
+        if (it.isBlank()) model.outputName else "$it.${model.outputName}"
+    }
+    val specName = spec.simpleName.asString()
+
+    for (validatorType in model.objectValidators) {
+        val decl = validatorType.declaration as? KSClassDeclaration ?: run {
+            logger.error(
+                "@ClassSpec(suffix=\"${model.suffix}\").validators on $specName: " +
+                "entry is not a class — got ${validatorType.declaration.simpleName.asString()}"
+            )
+            continue
+        }
+        val validatorName = decl.simpleName.asString()
+
+        val objectValidatorRef = decl.getAllSuperTypes().firstOrNull { superType ->
+            superType.declaration.qualifiedName?.asString() == FQN_OBJECT_VALIDATOR
+        }
+        if (objectValidatorRef == null) {
+            logger.error(
+                "@ClassSpec(suffix=\"${model.suffix}\").validators on $specName: " +
+                "$validatorName does not implement $FQN_OBJECT_VALIDATOR"
+            )
+            continue
+        }
+        val typeArg = objectValidatorRef.arguments.firstOrNull()?.type?.resolve()
+        val actualFqn = typeArg?.declaration?.qualifiedName?.asString()
+        val rawSimple = typeArg?.declaration?.simpleName?.asString()
+        // KSP renders unresolved declarations as "<ERROR TYPE: Foo>"; strip that wrapper.
+        val actualSimple = rawSimple?.let {
+            Regex("""^<ERROR TYPE:\s*(.+)>$""").matchEntire(it)?.groupValues?.get(1) ?: it
+        }
+        // FQN-strict when resolvable. When [actualFqn] is null the validator's type
+        // argument couldn't be resolved (most commonly because it points at the
+        // about-to-be-generated output class — a chicken-and-egg with KSP). Fall back
+        // to a simple-name match in that case; Kotlin's own compile of the generated
+        // code will reject a true mismatch.
+        val matches = if (actualFqn != null) {
+            actualFqn == expectedFqn
+        } else {
+            actualSimple == model.outputName
+        }
+        if (!matches) {
+            val actualLabel = actualFqn ?: actualSimple ?: "<unresolved>"
+            logger.error(
+                "@ClassSpec(suffix=\"${model.suffix}\").validators on $specName: " +
+                "$validatorName is ObjectValidator<$actualLabel> but expected ObjectValidator<$expectedFqn>"
+            )
+        }
+    }
+}
 
 /** Returns all @ClassSpec annotation instances on this declaration (handles @Repeatable container). */
 @Suppress("UNCHECKED_CAST")

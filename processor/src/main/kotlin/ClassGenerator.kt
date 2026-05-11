@@ -148,9 +148,10 @@ class ClassGenerator(
 
         classBuilder.primaryConstructor(ctorBuilder.build())
 
-        val hasValidation = fieldRulesList.any { it.stmts.isNotEmpty() }
+        val objectValidatorCalls = buildObjectValidatorCalls(model.objectValidators, addImport)
+        val hasValidation = fieldRulesList.any { it.stmts.isNotEmpty() } || objectValidatorCalls.isNotEmpty()
         if (hasValidation) {
-            classBuilder.addFunction(buildValidateFun(fieldRulesList))
+            classBuilder.addFunction(buildValidateFun(fieldRulesList, objectValidatorCalls))
             classBuilder.addFunction(buildValidateOrThrowFun())
             if (model.validateOnConstruct) {
                 classBuilder.addInitializerBlock(
@@ -178,7 +179,10 @@ class ClassGenerator(
 
     private data class FieldRules(val fieldName: String, val isNullable: Boolean, val stmts: List<String>)
 
-    private fun buildValidateFun(fieldRulesList: List<FieldRules>): FunSpec {
+    private fun buildValidateFun(
+        fieldRulesList: List<FieldRules>,
+        objectValidatorCalls: List<String>,
+    ): FunSpec {
         val body = CodeBlock.builder()
         body.addStatement("val ctx = %T()", VALIDATION_CONTEXT)
         for ((fieldName, isNullable, stmts) in fieldRulesList) {
@@ -191,6 +195,7 @@ class ClassGenerator(
                 stmts.forEach { body.addStatement(it) }
             }
         }
+        objectValidatorCalls.forEach { body.addStatement(it) }
         body.addStatement("return ctx.build()")
         return FunSpec.builder("validate")
             .returns(VALIDATION_RESULT)
@@ -230,6 +235,32 @@ class ClassGenerator(
             val name = decl.simpleName.asString()
             addImport(pkg, name)
             statements += """$name.let { v -> ctx.ensure(v.validate($fieldName), FieldRef("$fieldName"), v.message) }"""
+        }
+        return statements
+    }
+
+    /**
+     * Emits one direct delegation call per entry in [validators], in declaration order, e.g.:
+     * ```
+     * NameRequiredValidator.validate(this, ctx)
+     * ```
+     * Each call's class name is added to [addImport].
+     */
+    private fun buildObjectValidatorCalls(
+        validators: List<KSType>,
+        addImport: (String, String) -> Unit,
+    ): List<String> {
+        val statements = mutableListOf<String>()
+        for (validatorType in validators) {
+            val decl = validatorType.declaration as? KSClassDeclaration ?: continue
+            if (decl.qualifiedName == null) {
+                logger.warn("ClassGenerator: object validator has no qualified name — skipped")
+                continue
+            }
+            val pkg  = decl.packageName.asString()
+            val name = decl.simpleName.asString()
+            addImport(pkg, name)
+            statements += "$name.validate(this, ctx)"
         }
         return statements
     }

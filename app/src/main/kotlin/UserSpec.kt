@@ -32,7 +32,12 @@ import za.skadush.codegen.gradle.app.UpperCaseTransformer
         )
     ]
 )
-@ClassSpec(for_ = User::class, suffix = "CreateRequest", bundles = [TimestampsBundle::class])
+@ClassSpec(
+    for_ = User::class,
+    suffix = "CreateRequest",
+    bundles = [TimestampsBundle::class],
+    validators = [EmailMatchesNameValidator::class],
+)
 @ClassSpec(for_ = User::class, suffix = "UpdateRequest", partial = true, bundles = [TimestampsBundle::class])
 
 // ---- id: nullable in Entity, excluded everywhere else ----
