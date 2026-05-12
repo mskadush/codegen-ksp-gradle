@@ -14,7 +14,7 @@ Injects a **synthetic field** into one or more generated output classes. Unlike 
 | `name` | `String` | _(required)_ | Field name in the generated class. Must not be blank. |
 | `type` | `KClass<*>` | _(required)_ | Field type. Must be a simple, non-parameterised class reference (e.g. `Long::class`, `java.time.Instant::class`). Parameterised types such as `List<String>` are not supported. |
 | `nullable` | `Boolean` | `false` | When `true`, the generated field type is nullable. |
-| `defaultValue` | `String` | `""` | Kotlin expression used as the constructor parameter default (e.g. `"0L"`, `"\"\""`, `"java.time.Instant.now()"`). Required for non-partial, non-nullable fields. |
+| `default` | [`Default`](Default.md) | `Default()` | Default-value configuration. Use `Default(value = "...")` to splice a Kotlin expression verbatim. Required (non-sentinel) for non-partial, non-nullable fields. `Default.inherit` and `Default.clearInherited` are not valid here. |
 | `annotations` | `Array<CustomAnnotation>` | `[]` | Annotations forwarded verbatim to the generated field. |
 
 ---
@@ -28,7 +28,11 @@ Added fields are emitted as constructor parameters **with a default value**, so 
 ## Constraints
 
 - `name` must not be blank.
-- A non-partial, non-nullable field must have a non-blank `defaultValue` — without one the processor cannot synthesise a value and will report an error.
+- A non-partial, non-nullable field must have a non-sentinel `default` (`Default(value = "...")`) — without one the processor cannot synthesise a value and will report an error.
+- `default = Default(inherit = true)` is rejected on `@AddField` (synthetic fields have no source property to inherit from).
+- `default = Default(clearInherited = true)` is rejected on `@AddField` (there is no spec-level default to clear).
+
+> **Migration (plan 027, 2026-05-12):** the legacy `defaultValue: String` parameter was replaced by `default: Default`. Mechanically: `defaultValue = "0L"` → `default = Default(value = "0L")`.
 - `type` supports only simple, non-parameterised `KClass` references.
 
 ---
@@ -42,7 +46,7 @@ Added fields are emitted as constructor parameters **with a default value**, so 
     for_ = ["Entity"],
     name = "version",
     type = Long::class,
-    defaultValue = "0L",
+    default = Default(value = "0L"),
     annotations = [CustomAnnotation(annotation = jakarta.persistence.Version::class)]
 )
 object UserSpec
@@ -62,14 +66,14 @@ val version: Long = 0L
     for_ = ["Entity"],
     name = "createdAt",
     type = java.time.Instant::class,
-    defaultValue = "java.time.Instant.now()"
+    default = Default(value = "java.time.Instant.now()")
 )
 @AddField(
     for_ = ["Entity"],
     name = "updatedAt",
     type = java.time.Instant::class,
     nullable = true,
-    defaultValue = "null"
+    default = Default(value = "null")
 )
 object OrderSpec
 ```
@@ -82,7 +86,7 @@ object OrderSpec
     name = "displayLabel",
     type = String::class,
     nullable = true,
-    defaultValue = "null"
+    default = Default(value = "null")
 )
 object ProductSpec
 ```
@@ -93,4 +97,5 @@ object ProductSpec
 
 - [`@ClassSpec`](ClassSpec.md) — defines the output classes that `for_` refers to
 - [`@FieldOverride`](FieldOverride.md) — overrides fields that originate from the domain class
+- [`Default`](Default.md) — default-value configuration nested annotation
 - [`SupportingTypes`](SupportingTypes.md) — `CustomAnnotation` reference

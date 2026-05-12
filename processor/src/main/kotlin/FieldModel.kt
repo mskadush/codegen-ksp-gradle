@@ -1,5 +1,6 @@
 import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSType
+import com.google.devtools.ksp.symbol.KSValueParameter
 import com.squareup.kotlinpoet.TypeName
 
 /**
@@ -24,4 +25,7 @@ data class FieldModel(
     val fieldKind: FieldKind = FieldKind.Primitive,
     val sourceExpression: String? = null,
     val targetConfigs: List<KSAnnotation> = emptyList(),
+    /** Primary-constructor parameter of the domain class, used by `@Default(inherit = true)`
+     *  to recover the source default expression. `null` for INLINE-flattened fields. */
+    val sourceParam: KSValueParameter? = null,
 )

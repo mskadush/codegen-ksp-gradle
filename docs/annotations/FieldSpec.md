@@ -18,6 +18,7 @@ For output-kind-specific params (rename, validators) or when you only want to ta
 | `nullable` | `NullableOverride` | `UNSET` | Nullability override. `UNSET` preserves the domain type's nullability. See [`NullableOverride`](SupportingTypes.md#nullableoverride). |
 | `transformer` | `KClass<out FieldTransformer<*, *>>` | `NoOpTransformer::class` | Transformer applied to this field in all outputs. |
 | `annotations` | `Array<CustomAnnotation>` | `[]` | Annotations forwarded to this field in every output class. See [`@CustomAnnotation`](SupportingTypes.md#customannotation). |
+| `default` | [`Default`](Default.md) | `Default()` | Default-value configuration for the generated constructor parameter. Use `Default(value = "...")` for an explicit expression or `Default(inherit = true)` to copy the source property's default. `Default.clearInherited` is not valid on `@FieldSpec`. |
 
 ---
 
@@ -59,6 +60,16 @@ object UserSpec
 object UserSpec
 ```
 
+### Provide a default value across all outputs
+
+```kotlin
+@FieldSpec(property = "createdAt", default = Default(inherit = true))   // copy source default
+@FieldSpec(property = "role",      default = Default(value = "Role.USER"))
+object UserSpec
+```
+
+See [`Default`](Default.md) for the full set of knobs and mutual-exclusion rules.
+
 ### Multiple defaults on the same spec
 
 ```kotlin
@@ -86,4 +97,5 @@ When both `@FieldSpec` and `@FieldOverride` configure the same property:
 ## See also
 
 - [`@FieldOverride`](FieldOverride.md) — per-output, output-kind-specific overrides
+- [`Default`](Default.md) — default-value configuration nested annotation
 - [`NullableOverride`](SupportingTypes.md#nullableoverride)

@@ -46,6 +46,7 @@ class ClassResolver(private val logger: KSPLogger) {
                 originalName = param.name!!.asString(),
                 originalType = param.type.resolve(),
                 resolvedType = param.type.toTypeName(),
+                sourceParam  = param,
             )
         }
     }

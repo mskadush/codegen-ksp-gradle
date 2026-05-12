@@ -1,6 +1,7 @@
 import za.skadush.codegen.gradle.annotations.ClassSpec
 import za.skadush.codegen.gradle.annotations.CustomAnnotation
 import za.skadush.codegen.gradle.annotations.AddField
+import za.skadush.codegen.gradle.annotations.Default
 import za.skadush.codegen.gradle.annotations.FieldBundle
 import za.skadush.codegen.gradle.annotations.FieldOverride
 import za.skadush.codegen.gradle.annotations.FieldSpec
@@ -62,4 +63,10 @@ internal val FQN_ADD_FIELD = AddField::class.qualifiedName!!
 internal val PROP_ADD_NAME     = AddField::name.name
 internal val PROP_ADD_TYPE     = AddField::type.name
 internal val PROP_ADD_NULLABLE = AddField::nullable.name
-internal val PROP_ADD_DEFAULT  = AddField::defaultValue.name
+internal val PROP_ADD_DEFAULT  = AddField::default.name
+
+// ── Default (nested annotation) property names + shared name ─────────────────
+internal val PROP_DEFAULT          = FieldSpec::default.name      // "default"
+internal val PROP_DEFAULT_VALUE    = Default::value.name
+internal val PROP_DEFAULT_INHERIT  = Default::inherit.name
+internal val PROP_DEFAULT_CLEAR_INHERITED = Default::clearInherited.name

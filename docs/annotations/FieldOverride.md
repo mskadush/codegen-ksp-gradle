@@ -20,6 +20,7 @@ A **per-output field override**, scoped to one or more [`@ClassSpec`](ClassSpec.
 | `annotations` | `Array<CustomAnnotation>` | `[]` | Annotations forwarded to the generated field in the named output(s). |
 | `rename` | `String` | `""` | Alternative field name in the generated class. |
 | `validators` | `Array<KClass<out FieldValidator<*>>>` | `[]` | Runtime validators applied to this field. Each must be a singleton `object` implementing [`FieldValidator`](FieldValidator.md). Presence of any validator causes the processor to emit `validate()` and `validateOrThrow()` on the generated class. |
+| `default` | [`Default`](Default.md) | `Default()` | Default-value configuration for the named output(s). When non-sentinel, replaces any `@FieldSpec.default` for these outputs. Supports `value`, `inherit`, and `clearInherited` (the only annotation where `clearInherited = true` is valid). |
 
 > The processor ignores inapplicable params — `rename` is silently skipped for outputs where it isn't relevant, etc.
 
@@ -125,11 +126,32 @@ A **per-output field override**, scoped to one or more [`@ClassSpec`](ClassSpec.
 object UserSpec
 ```
 
+### Override a class-wide default for one output
+
+```kotlin
+// Class-wide: every output gets the source default for createdAt.
+@FieldSpec(property = "createdAt", default = Default(inherit = true))
+
+// Entity stores its own timestamp via the DB; clear the inherited default here.
+@FieldOverride(for_ = ["Entity"], property = "createdAt", default = Default(clearInherited = true))
+
+// CreateRequest uses an explicit literal instead.
+@FieldOverride(
+    for_ = ["CreateRequest"],
+    property = "createdAt",
+    default = Default(value = "java.time.Instant.EPOCH"),
+)
+object UserSpec
+```
+
+See [`Default`](Default.md) for the mutual-exclusion rules.
+
 ---
 
 ## See also
 
 - [`@ClassSpec`](ClassSpec.md) — defines the output classes that `for_` refers to
 - [`@FieldSpec`](FieldSpec.md) — default overrides that apply to all outputs (lower priority)
+- [`Default`](Default.md) — default-value configuration nested annotation
 - [`FieldValidator`](FieldValidator.md) — how to define runtime validators
 - [`@FieldBundle`](FieldBundle.md) — package reusable `@FieldOverride` sets into bundles

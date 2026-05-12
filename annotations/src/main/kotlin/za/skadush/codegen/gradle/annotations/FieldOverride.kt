@@ -30,6 +30,10 @@ import kotlin.reflect.KClass
  * @param annotations    Annotations forwarded to the generated field in the named output class(es).
  * @param rename         Alternative field name in the generated class.
  * @param validators     Validation rules; each must be a singleton `object` implementing [FieldValidator].
+ * @param default        Default-value configuration scoped to the named output class(es).
+ *                       See [Default]. Overrides [FieldSpec.default] when its sentinel
+ *                       (no-arg `Default()`) is not used. `Default.clear = true` removes any
+ *                       inherited default from [FieldSpec] for these outputs.
  */
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.SOURCE)
@@ -42,5 +46,6 @@ annotation class FieldOverride(
     val transformer: KClass<out FieldTransformer<*, *>> = NoOpTransformer::class,
     val annotations: Array<CustomAnnotation> = [],
     val rename: String = "",
-    val validators: Array<KClass<out FieldValidator<*>>> = []
+    val validators: Array<KClass<out FieldValidator<*>>> = [],
+    val default: Default = Default(),
 )

@@ -47,7 +47,7 @@ class ClassGenerator(
     fun generate(spec: KSClassDeclaration, model: ClassSpecModel) {
         val outputName = model.outputName
         val overrides  = spec.resolveWithBundles(
-            model.suffix, model.bundleFQNs, model.mergeStrategy, bundleRegistry,
+            model.suffix, model.bundleFQNs, model.mergeStrategy, bundleRegistry, logger,
         )
         val fields     = classResolver.resolveWithKinds(
             model.domainClass, model.unmappedStrategy, model.suffix,
@@ -78,6 +78,8 @@ class ClassGenerator(
             val validators  = override?.validators ?: emptyList()
             val ensureStmts = buildValidatorCalls(field.originalName, validators, addImport)
 
+            val sourceDefaultExpr = resolveSourceDefaultExpression(override, field, fieldName)
+
             if (model.partial) {
                 val nullableType = baseType.copy(nullable = true)
                 ctorBuilder.addParameter(
@@ -95,7 +97,9 @@ class ClassGenerator(
                     NullableOverride.NO   -> baseType.copy(nullable = false)
                     NullableOverride.UNSET -> baseType
                 }
-                ctorBuilder.addParameter(fieldName, finalType)
+                val paramBuilder = ParameterSpec.builder(fieldName, finalType)
+                if (sourceDefaultExpr != null) paramBuilder.defaultValue(sourceDefaultExpr)
+                ctorBuilder.addParameter(paramBuilder.build())
                 val propSpec = PropertySpec.builder(fieldName, finalType)
                     .initializer(fieldName)
                     .apply { override?.allAnnotations?.forEach { raw -> raw.toAnnotationSpec(addImport)?.let { addAnnotation(it) } } }
@@ -112,7 +116,7 @@ class ClassGenerator(
 
             val fieldName    = extraAnn.argString(PROP_ADD_NAME)
             val isNullable   = extraAnn.argBool(PROP_ADD_NULLABLE)
-            val defaultExpr  = extraAnn.argString(PROP_ADD_DEFAULT)
+            val defaultExpr  = extraAnn.argDefault().value
 
             val typeFQN = (extraAnn.arguments.firstOrNull { it.name?.asString() == PROP_ADD_TYPE }
                 ?.value as? KSType)?.declaration?.qualifiedName?.asString() ?: continue
@@ -246,6 +250,32 @@ class ClassGenerator(
      * ```
      * Each call's class name is added to [addImport].
      */
+    /**
+     * Resolves the final default expression for a source-derived field, given the merged
+     * [Default] config from [override] and the field's source-constructor parameter.
+     *
+     * Returns `null` when no default should be emitted.
+     */
+    private fun resolveSourceDefaultExpression(
+        override: MergedOverride?,
+        field: FieldModel,
+        fieldName: String,
+    ): String? {
+        val cfg = override?.defaultConfig ?: DefaultConfig.SENTINEL
+        return when {
+            cfg.clearInherited      -> null
+            cfg.value.isNotEmpty()  -> cfg.value
+            cfg.inherit             -> {
+                val param = field.sourceParam ?: run {
+                    logger.error("@Default(inherit = true) on '$fieldName': no source constructor parameter available (INLINE-flattened field?). Use Default(value = \"…\") instead.")
+                    return null
+                }
+                param.readSourceDefaultExpression(logger, "@Default(inherit = true) on '$fieldName'")
+            }
+            else -> null
+        }
+    }
+
     private fun buildObjectValidatorCalls(
         validators: List<KSType>,
         addImport: (String, String) -> Unit,

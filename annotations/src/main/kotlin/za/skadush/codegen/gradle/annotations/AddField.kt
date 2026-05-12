@@ -1,6 +1,5 @@
 package za.skadush.codegen.gradle.annotations
 
-import org.intellij.lang.annotations.Language
 import kotlin.reflect.KClass
 
 /**
@@ -17,10 +16,12 @@ import kotlin.reflect.KClass
  *
  * **Constraints**:
  * - [name] must not be blank.
- * - A non-partial, non-nullable field must have a non-blank [defaultValue] — without one the
- *   mapper cannot synthesise a value and the processor will report an error.
+ * - A non-partial, non-nullable field must have a non-sentinel [default] (`Default(value = ...)`)
+ *   — without one the mapper cannot synthesise a value and the processor will report an error.
  * - [type] supports only simple, non-parameterised `KClass` references (e.g. `Long::class`,
  *   `java.time.Instant::class`). Parameterised types such as `List<String>` are not supported.
+ * - [Default.clear] is not valid on `@AddField` (there is no spec-level default to clear);
+ *   the processor errors if set.
  *
  * **Example**:
  * ```kotlin
@@ -28,7 +29,7 @@ import kotlin.reflect.KClass
  *     for_ = ["Entity"],
  *     name = "version",
  *     type = Long::class,
- *     defaultValue = "0L",
+ *     default = Default(value = "0L"),
  *     annotations = [CustomAnnotation(annotation = jakarta.persistence.Version::class)]
  * )
  * object UserSpec
@@ -40,9 +41,9 @@ import kotlin.reflect.KClass
  * @param type         Field type. Use simple, non-parameterised types (e.g. `Long::class`,
  *                     `String::class`, `java.time.Instant::class`).
  * @param nullable     When `true`, the generated field type is nullable.
- * @param defaultValue Kotlin expression used as the constructor parameter default
- *                     (e.g. `"0L"`, `"\"\""`, `"java.time.Instant.now()"`).
- *                     Required for non-partial, non-nullable fields.
+ * @param default      Default-value configuration. See [Default]. The sentinel `Default()`
+ *                     means "no default"; required (non-sentinel) for non-partial, non-nullable
+ *                     fields. Migrated from the legacy `defaultValue: String` parameter in plan 027.
  * @param annotations  Annotations forwarded verbatim to the generated field.
  *
  * @see ClassSpec
@@ -55,7 +56,6 @@ annotation class AddField(
     val name: String,
     val type: KClass<*>,
     val nullable: Boolean = false,
-    @Language("kotlin", prefix = "val a = ")
-    val defaultValue: String = "",
+    val default: Default = Default(),
     val annotations: Array<CustomAnnotation> = [],
 )

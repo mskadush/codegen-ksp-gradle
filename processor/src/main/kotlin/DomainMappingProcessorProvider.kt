@@ -382,7 +382,7 @@ private fun KSClassDeclaration.validatePropertyRefs(
         val forSuffixes = ann.argStringList(PROP_FOR)
         val fieldName   = ann.argString(PROP_ADD_NAME)
         val isNullable  = ann.argBool(PROP_ADD_NULLABLE)
-        val default     = ann.argString(PROP_ADD_DEFAULT)
+        val defaultCfg  = ann.argDefault()
 
         if (fieldName.isBlank()) {
             logger.error("@AddField on $specName has a blank 'name'")
@@ -392,10 +392,10 @@ private fun KSClassDeclaration.validatePropertyRefs(
         classSpecAnnotations().forEach { csAnn ->
             val model = csAnn.toClassSpecModel()  // defaultPackage not needed for validation
             if (model.suffix !in forSuffixes) return@forEach
-            if (!model.partial && !isNullable && default.isBlank()) {
+            if (!model.partial && !isNullable && defaultCfg.value.isBlank()) {
                 logger.error(
                     "@AddField '$fieldName' on $specName for suffix '${model.suffix}' " +
-                    "must have a defaultValue (non-partial, non-nullable fields cannot be " +
+                    "must have a default (non-partial, non-nullable fields cannot be " +
                     "omitted by the mapper)"
                 )
             }

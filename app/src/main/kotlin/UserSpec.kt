@@ -2,6 +2,7 @@ import za.skadush.codegen.gradle.annotations.BundleMergeStrategy
 import za.skadush.codegen.gradle.annotations.ClassSpec
 import za.skadush.codegen.gradle.annotations.CustomAnnotation
 import za.skadush.codegen.gradle.annotations.AddField
+import za.skadush.codegen.gradle.annotations.Default
 import za.skadush.codegen.gradle.annotations.FieldOverride
 import za.skadush.codegen.gradle.annotations.NullableOverride
 import za.skadush.codegen.gradle.app.UpperCaseTransformer
@@ -86,13 +87,18 @@ import za.skadush.codegen.gradle.app.UpperCaseTransformer
     property = "name",
     validators = [NotBlankValidator::class]
 )
+// Explicit-value default: anonymous user on CreateRequest.
+@FieldOverride(for_ = ["CreateRequest"], property = "name", default = Default(value = "\"anon\""))
+
+// ---- createdAt: inherit the source default (java.time.Instant.now()) on Response ----
+@FieldOverride(for_ = ["Response"], property = "createdAt", default = Default(inherit = true))
 
 // ---- extra fields: version only on Entity (JPA optimistic locking) ----
 @AddField(
     for_ = ["Entity"],
     name = "version",
     type = Long::class,
-    defaultValue = "0L",
+    default = Default(value = "0L"),
     annotations = [CustomAnnotation(annotation = jakarta.persistence.Version::class)]
 )
 

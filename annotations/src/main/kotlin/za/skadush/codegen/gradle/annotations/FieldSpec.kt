@@ -22,6 +22,9 @@ import kotlin.reflect.KClass
  * @param nullable        Nullability override; [NullableOverride.UNSET] preserves the source type.
  * @param transformer     [FieldTransformer] class for value conversion.
  * @param annotations     Annotations forwarded to the generated field in every output class.
+ * @param default         Default-value configuration. See [Default]. The sentinel `Default()`
+ *                        (no args) means "no default configured". `Default.clear` is only valid
+ *                        on [FieldOverride]; the processor errors if set here.
  */
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.SOURCE)
@@ -31,5 +34,6 @@ annotation class FieldSpec(
     val exclude: Boolean = false,
     val nullable: NullableOverride = NullableOverride.UNSET,
     val transformer: KClass<out FieldTransformer<*, *>> = NoOpTransformer::class,
-    val annotations: Array<CustomAnnotation> = []
+    val annotations: Array<CustomAnnotation> = [],
+    val default: Default = Default(),
 )

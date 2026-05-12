@@ -5,6 +5,7 @@
 ## 📋 Backlog
 
 ## ✅ Done
+- [027-default-field-values](027-default-field-values.md) · status: done · stage: 8 · step: 15 · updated: 2026-05-12 · note: nested `Default` annotation on FieldSpec/FieldOverride/AddField; verbatim `value` + source-offset `inherit` + `clearInherited`; AddField migrated from `defaultValue: String`
 - [026-cross-field-validation](026-cross-field-validation.md) — `ObjectValidator<T>` + `@ClassSpec.validators` for cross-field rules; validator chooses per-field error attribution via `ValidationContext.error(...)`
 - [021-enum-fields-as-primitives](021-enum-fields-as-primitives.md) — Treat enum fields as primitive pass-throughs in `ClassResolver.classifyField()`; prevents FAIL/EXCLUDE/INLINE misclassification of custom enum field types
 - [025-rename-field-annotations](025-rename-field-annotations.md) — Rename `@ClassField` → `@FieldSpec` (default field config) and `@FieldSpec` → `@FieldOverride` (per-output override) so public annotations follow the `@…Spec` pattern
