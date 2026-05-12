@@ -33,6 +33,7 @@ internal val PROP_ANNOTATIONS           = ClassSpec::annotations.name
 internal val PROP_VALIDATE_ON_CONSTRUCT = ClassSpec::validateOnConstruct.name
 internal val PROP_CLASS_SPEC_VALIDATORS = ClassSpec::validators.name
 internal val PROP_OUTPUT_PACKAGE        = ClassSpec::outputPackage.name
+internal val PROP_CLASS_SPEC_EXCLUDE    = ClassSpec::exclude.name
 
 // ── ObjectValidator FQN (for bound checks) ───────────────────────────────────
 internal const val FQN_OBJECT_VALIDATOR = "za.skadush.codegen.gradle.runtime.ObjectValidator"

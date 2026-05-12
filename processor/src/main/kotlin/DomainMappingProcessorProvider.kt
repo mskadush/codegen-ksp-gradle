@@ -377,6 +377,68 @@ private fun KSClassDeclaration.validatePropertyRefs(
         }
     }
 
+    // Validate @ClassSpec.exclude entries
+    classSpecAnnotations().forEach { csAnn ->
+        val excludeNames = csAnn.argStringList(PROP_CLASS_SPEC_EXCLUDE)
+        if (excludeNames.isEmpty()) return@forEach
+
+        val suffix      = csAnn.argString(PROP_SUFFIX)
+        val domainClass = csAnn.domainClass() ?: return@forEach
+        val domainName  = domainClass.simpleName.asString()
+        val localDomainProps = domainClass.primaryConstructor?.parameters
+            ?.mapNotNull { it.name?.asString() }?.toSet() ?: emptySet()
+
+        val overridePropsForSuffix = annotations
+            .filter { it.shortName.asString() == AN_FIELD_OVERRIDE }
+            .filter { ann ->
+                val forList = ann.arguments.firstOrNull { it.name?.asString() == PROP_FOR }?.value as? List<*>
+                forList?.filterIsInstance<String>()?.contains(suffix) == true
+            }
+            .map { it.argString(PROP_PROPERTY) }
+            .filter { it.isNotBlank() }
+            .toSet()
+
+        val addFieldNamesForSuffix = addFieldAnnotations()
+            .filter { it.argStringList(PROP_FOR).contains(suffix) }
+            .map { it.argString(PROP_ADD_NAME) }
+            .filter { it.isNotBlank() }
+            .toSet()
+
+        val bundlePropsForSuffix = mutableSetOf<String>()
+        csAnn.argKClassList(PROP_BUNDLES).forEach { bundleType ->
+            val bundleFQN  = bundleType.declaration.qualifiedName?.asString() ?: return@forEach
+            val bundleDecl = bundleRegistry.bundles[bundleFQN] ?: return@forEach
+            bundleDecl.annotations
+                .filter { it.shortName.asString() in setOf(AN_FIELD_SPEC, AN_FIELD_OVERRIDE) }
+                .filter { ann ->
+                    if (ann.shortName.asString() == AN_FIELD_SPEC) return@filter true
+                    val forList = ann.arguments.firstOrNull { it.name?.asString() == PROP_FOR }?.value as? List<*>
+                    forList?.filterIsInstance<String>()?.contains(suffix) == true
+                }
+                .mapNotNull { it.argString(PROP_PROPERTY).takeIf { p -> p.isNotBlank() } }
+                .let { bundlePropsForSuffix.addAll(it) }
+        }
+
+        val seen = mutableSetOf<String>()
+        for (name in excludeNames) {
+            val site = "@ClassSpec(suffix=\"$suffix\") on $specName: exclude"
+            when {
+                name.isBlank() ->
+                    logger.error("$site contains a blank entry")
+                !seen.add(name) ->
+                    logger.error("$site lists '$name' more than once")
+                name in addFieldNamesForSuffix ->
+                    logger.error("$site '$name' conflicts with @AddField for the same suffix")
+                name in overridePropsForSuffix ->
+                    logger.error("$site '$name' conflicts with @FieldOverride for the same suffix — pick one")
+                name !in localDomainProps ->
+                    logger.error("$site '$name' is not a property of $domainName")
+                name in bundlePropsForSuffix ->
+                    logger.warn("$site '$name' is also configured by a bundle — that bundle config will be ignored")
+            }
+        }
+    }
+
     // Validate @AddField constraints
     addFieldAnnotations().forEach { ann ->
         val forSuffixes = ann.argStringList(PROP_FOR)

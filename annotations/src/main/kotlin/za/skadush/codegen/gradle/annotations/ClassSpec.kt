@@ -53,6 +53,12 @@ import kotlin.reflect.KClass
  * @param outputPackage          Package for the generated class and its mapper file.
  *                               Precedence: this value → `codegen.defaultPackage` KSP option →
  *                               domain class package (existing behaviour when both are unset).
+ * @param exclude                Names of domain properties to omit from the generated class.
+ *                               Applied after bundle merge but before per-field overrides.
+ *                               Each entry must match a primary-constructor parameter of [for_].
+ *                               An entry that conflicts with a same-suffix [FieldOverride] or
+ *                               [AddField] is a compile-time error; an entry configured by a
+ *                               bundle emits a warning since the bundle config becomes inert.
  */
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.SOURCE)
@@ -69,5 +75,6 @@ annotation class ClassSpec(
     val validateOnConstruct: Boolean = false,
     val validators: Array<KClass<*>> = [],
     val outputPackage: String = "",
+    val exclude: Array<String> = [],
 )
 

@@ -53,7 +53,10 @@ class MapperGenerator(
         val expandedFields = classResolver.resolveWithKinds(
             model.domainClass, model.unmappedStrategy, model.suffix,
         ) ?: return
-        val includedFields = expandedFields.filter { overrides[it.originalName]?.exclude != true }
+        val excludeSet = model.excludeNames.toSet()
+        val includedFields = expandedFields.filter {
+            overrides[it.originalName]?.exclude != true && it.originalName !in excludeSet
+        }
 
         val toOutputArgs = includedFields.joinToString(", ") { field ->
             val src = field.sourceExpression ?: "this.${field.originalName}"
@@ -96,7 +99,7 @@ class MapperGenerator(
             val rename   = override?.rename?.takeIf { it.isNotBlank() }
             val srcName  = rename ?: field.originalName
             when {
-                override?.exclude == true ->
+                override?.exclude == true || field.originalName in excludeSet ->
                     "${field.originalName} = ${defaultValueLiteral(field.resolvedType)}"
 
                 isMappedObject(field.originalType, specRegistry, model.suffix) ->

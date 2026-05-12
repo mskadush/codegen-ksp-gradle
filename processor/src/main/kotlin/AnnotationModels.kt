@@ -30,6 +30,7 @@ data class ClassSpecModel(
     val objectValidators: List<KSType>,
     val outputPackage: String,
     val processorDefaultPackage: String,
+    val excludeNames: List<String> = emptyList(),
 ) {
     val outputName: String get() = "$prefix${domainClass.simpleName.asString()}$suffix"
     val domainName: String get() = domainClass.simpleName.asString()
@@ -55,5 +56,6 @@ internal fun KSAnnotation.toClassSpecModel(processorDefaultPackage: String = "")
         objectValidators         = argKClassList(PROP_CLASS_SPEC_VALIDATORS),
         outputPackage            = argString(PROP_OUTPUT_PACKAGE),
         processorDefaultPackage  = processorDefaultPackage,
+        excludeNames             = argStringList(PROP_CLASS_SPEC_EXCLUDE),
     )
 }

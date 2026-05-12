@@ -1,0 +1,45 @@
+# Detekt configuration — basic rules
+# buildUponDefaultConfig = true means these settings overlay the detekt defaults.
+# Only overrides are needed here; omitted rules inherit their default state.
+
+style:
+  active: true
+  ForbiddenComment:
+    active: true
+    allowedPatterns: "TODO"
+  ThrowsCount:
+    active: false
+  ReturnCount:
+    active: false
+
+complexity:
+  active: true
+
+exceptions:
+  active: true
+  SwallowedException:
+    active: false
+  TooGenericExceptionCaught:
+    active: false
+
+potential-bugs:
+  active: true
+
+coroutines:
+  active: true
+
+naming:
+  active: true
+
+comments:
+  active: true
+  UndocumentedPublicClass:
+    active: true
+    ignoreAnnotated:
+      - SpringBootApplication
+  UndocumentedPublicFunction:
+    active: true
+    ignoreFunction:
+      - main
+  UndocumentedPublicProperty:
+    active: true

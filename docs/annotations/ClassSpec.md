@@ -20,6 +20,7 @@ Drives generation of a **single output class** from a domain type. Apply it mult
 | `annotations` | `Array<CustomAnnotation>` | `[]` | Annotations forwarded verbatim to the generated class (e.g. `@Entity`, `@Table`). See [`@CustomAnnotation`](SupportingTypes.md#customannotation). |
 | `validateOnConstruct` | `Boolean` | `false` | When `true`, emits `init { validateOrThrow() }` so validation runs on construction. Useful when deserialisation frameworks call the constructor directly. |
 | `validators` | `Array<KClass<*>>` | `[]` | Cross-field validators applied to the generated class. Each entry must be a singleton `object` implementing [`ObjectValidator<GeneratedClass>`](ObjectValidator.md). Loose-typed here because the annotations module cannot depend on the runtime module where `ObjectValidator` lives; the processor verifies the bound. |
+| `exclude` | `Array<String>` | `[]` | Names of domain properties to omit from this output. Each entry must match a primary-constructor parameter of `for_`. Conflicts with a same-suffix `@FieldOverride` or `@AddField` are compile-time errors; an entry configured by a bundle emits a warning since the bundle config becomes inert. Useful when many fields are dropped wholesale — for one-off removal, prefer `@FieldOverride(exclude = true)`. |
 
 ---
 
@@ -75,7 +76,12 @@ data class User(
     ]
 )
 @ClassSpec(for_ = User::class, suffix = "CreateRequest", bundles = [TimestampsBundle::class])
-@ClassSpec(for_ = User::class, suffix = "UpdateRequest", partial = true)
+@ClassSpec(
+    for_ = User::class,
+    suffix = "UpdateRequest",
+    partial = true,
+    exclude = ["updatedAt"],   // dropped wholesale — server controls this timestamp
+)
 object UserSpec
 ```
 

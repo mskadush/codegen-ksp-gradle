@@ -63,9 +63,12 @@ class ClassGenerator(
 
         val fieldRulesList = mutableListOf<FieldRules>()
 
+        val excludeSet = model.excludeNames.toSet()
+
         for (field in fields) {
             val override  = overrides[field.originalName]
             if (override?.exclude == true) continue
+            if (field.originalName in excludeSet) continue
 
             val baseType = when (val kind = field.fieldKind) {
                 is FieldKind.MappedObject     -> kind.targetClassName

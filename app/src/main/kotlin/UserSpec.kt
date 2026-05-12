@@ -39,7 +39,13 @@ import za.skadush.codegen.gradle.app.UpperCaseTransformer
     bundles = [TimestampsBundle::class],
     validators = [EmailMatchesNameValidator::class],
 )
-@ClassSpec(for_ = User::class, suffix = "UpdateRequest", partial = true, bundles = [TimestampsBundle::class])
+@ClassSpec(
+    for_ = User::class,
+    suffix = "UpdateRequest",
+    partial = true,
+    bundles = [TimestampsBundle::class],
+    exclude = ["updatedAt"],
+)
 
 // ---- id: nullable in Entity, excluded everywhere else ----
 @FieldOverride(for_ = ["Entity"], property = "id", nullable = NullableOverride.YES)
